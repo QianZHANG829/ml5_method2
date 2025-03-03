@@ -1,5 +1,5 @@
 /// upload recorded video to get the keypoint data with bodyPose.
-// update
+
 
 // 全局变量
 let video;
