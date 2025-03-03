@@ -1,0 +1,51 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>TimeSeries + bodyPose Example</title>
+  <!-- p5.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+
+  <!-- 引用本地编译好的 ml5.js (development build) -->
+  <script src="../../dist/ml5.js"></script>
+
+  <!-- 引用kalman-filter -->
+  <script src="./kalman.js"></script>
+
+  <!-- 你的 p5 代码 -->
+
+  <!-- DATA COLLECTION -->
+  <!-- <script src="sketch_collectdata.js"></script> -->
+  <!-- <script src="sketch_collectdata_recording.js"></script> -->
+
+  <!-- <script src="sketch_collectdata_uploadVIDEO.js"></script> -->
+  <script src="sketch_collectdata_uploadVIDEO_kalfman.js"></script>
+
+
+
+  <!-- TRAINING -->
+  <!-- <script src="sketch_train.js"></script> -->
+  <!-- <script src="sketch_train_velocity.js"></script> -->
+  <!-- <script src="sketch_train_acceleration.js"></script> -->
+
+
+
+  <!-- Prediction -->
+  <!-- <script src="sketch_classifyONLY.js"></script> -->
+  <!-- <script src="sketch_classify_CONTINUED.js"></script> -->
+
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_velocity.js"></script> -->
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration.js"></script> -->
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Both.js"></script> -->
+
+
+</head>
+<body>
+  <h3>TimeSeries - bodyPose Movement Classifier</h3>
+  <p>
+    1) 点击 "Record Action A" 或 "Record Action B"，各录 5 秒。<br/>
+    2) 多次录制每种动作，保证有足够训练数据。<br/>
+    3) "Train" 训练后，点击 "Predict" 再录一次 5 秒，查看预测结果（见控制台）。<br/>
+  </p>
+
+</body>
+</html>
