@@ -1,5 +1,5 @@
 /// upload recorded video to get the keypoint data with bodyPose.
-// updated on mar 2, 8:44pm
+// updated on mar 4， 10am
 
 // 全局变量
 let video;
