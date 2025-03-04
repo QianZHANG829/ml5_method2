@@ -7,6 +7,11 @@ let bodyPose;
 let poses = [];       // 存储检测到的所有人的关键点
 let connections;      // 用于画骨架连接的索引
 
+
+// 记录视频的实际宽高，方便在 videoLoaded 后使用
+let vidWidth = 640;
+let vidHeight = 480;
+
 // timeSeries 模型
 let classifier;
 
@@ -20,8 +25,13 @@ let frameCount = 0;
 // 文件上传按钮
 let fileInput;
 
+//video play button
+let playButton, videoSlider;
+let controlBar; // 控制条容器
+
+
 const FPS = 30;
-const CAPTURE_FRAMES = 20 * FPS; // 20秒 x 30帧
+const CAPTURE_FRAMES = 5 * FPS; // 5秒 x 30帧
 
 // 声明一个全局的输入名称数组（33 个关键点，每个关键点对应 x 和 y，共 66 个输入）
 let inputNames = [];
@@ -40,11 +50,15 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(640, 480);
+  // 先创建一个默认大小的画布，后续在 videoLoaded() 中再根据视频宽高 resize
+  createCanvas(vidWidth, vidHeight);
 
   // 创建文件上传按钮，用于上传视频文件
   fileInput = createFileInput(handleFile);
   fileInput.position(10, (windowHeight - fileInput.elt.clientHeight) / 2);
+
+  // 只创建一个空的 controlBar 容器，先不设置位置和大小
+  controlBar = createDiv();
 
   // video = createCapture(VIDEO);
   // video.size(640, 480);
@@ -56,7 +70,6 @@ function setup() {
     kalmanFiltersY.push(new KalmanFilter(0.05, 0.5 ));
   }
   
-
 
   // 获取骨架连线索引（用于绘制骨架）
   connections = bodyPose.getSkeleton();
@@ -91,8 +104,8 @@ function handleFile(file) {
 
 function videoLoaded() {
   // 获取原始宽高
-  const vidWidth = video.width;
-  const vidHeight = video.height;
+  vidWidth = video.width;
+  vidHeight = video.height;
 
   // 创建与视频相同大小的画布
   resizeCanvas(vidWidth, vidHeight);
@@ -100,6 +113,33 @@ function videoLoaded() {
   video.loop();
   bodyPose.detectStart(video, gotPoses);
   connections = bodyPose.getSkeleton();
+
+  // 设置控制条容器大小与位置（在视频下方）
+  controlBar.size(vidWidth, 40);
+  controlBar.style("background-color", "#ddd");
+  // 让控制条位于视频正下方，可以根据需求调整 x, y
+  controlBar.position(0, vidHeight+150);
+  controlBar.style("display", "flex");
+  controlBar.style("align-items", "center");
+  controlBar.style("padding", "0 10px");
+
+  // 在控制条容器中创建进度条
+  // video.duration() 在视频加载后即可获取
+  videoSlider = createSlider(0, video.duration(), 0, 0.01);
+  videoSlider.parent(controlBar);
+  videoSlider.style("flex-grow", "1"); // 让滑块自适应宽度
+
+  // 当滑动条值改变时，更新视频当前播放时间
+  videoSlider.input(() => {
+    let t = videoSlider.value();
+    video.time(t);
+  });
+
+  // 在控制条容器中创建播放/暂停按钮
+  playButton = createButton("Play/Pause");
+  playButton.parent(controlBar);
+  playButton.style("margin-left", "10px");
+  playButton.mousePressed(togglePlay);
 }
 
 function modelReady() {
@@ -111,6 +151,15 @@ function draw() {
   // 绘制视频图像
   if (video) {
     image(video, 0, 0, width, height);
+  }
+
+  // 自动更新滑块（如果视频支持 time() 和 duration()）
+  // 这里的示例视频使用摄像头，不支持 time()，所以实际使用中你需要在 videoLoaded() 回调中创建 slider，并更新最大值
+  if (video && videoSlider && video.time && video.duration) {
+    // 如果用户没有正在操作滑块，则自动更新其值
+    if (document.activeElement !== videoSlider.elt) {
+      videoSlider.value(video.time());
+    }
   }
 
   // 绘制检测到的关键点和骨架连线
@@ -242,18 +291,26 @@ function gotPoses(results) {
 }
 
 function keyPressed() {
-  // 按 S 保存数据
-  if (key === 's' || key === 'S') {
+  // 按 1 保存数据
+  if (key === '1' ) {
     classifier.saveData();
     console.log("Saved data to JSON.");
   }
   // 按 A 开始录制 label "A"
-  else if (key === 'a' || key === 'A') {
+  else if (key === 'a' || key === 'A') {  
     startCollection("A");
   }
   // 按 B 开始录制 label "B"
   else if (key === 'b' || key === 'B') {
     startCollection("B");
+  } 
+  
+  else if (key === 'f' || key === 'F') {  
+    startCollection("F"); // FAST 
+  }
+  // 按 S 开始录制 label "S"
+  else if (key === 's' || key === 'S') {
+    startCollection("S"); //Slow
   }
   // 按 T 触发训练
   else if (key === 't' || key === 'T') {
@@ -273,11 +330,23 @@ function startCollection(label) {
     collectingLabel = label;
     sequence = [];
     frameCount = 0;
-  }, 2000);
+  }, 30); //
 }
 
 
 function finishedTraining() {
   console.log("模型训练完成！");
   classifier.save();
+}
+
+// for play video 
+function togglePlay() {
+   // 如果 video 对象支持 play/pause 控制（例如上传的视频）
+   if (video && video.elt) {
+    if (!video.elt.paused) {
+      video.pause();
+    } else {
+      video.play();
+    }
+  }
 }

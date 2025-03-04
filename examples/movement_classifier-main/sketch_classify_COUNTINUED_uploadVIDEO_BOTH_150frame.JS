@@ -2,22 +2,24 @@
 // 使用上传视频、计算 acceleration 特征进行动作分类预测
 // ─────────────────────────────────────────────
 
-
 // 全局变量
 let video;
 let bodyPose;
 let poses = [];       // 存储检测到的所有人的关键点
 let connections;      // 用于绘制骨架连线的索引
-let poseLabel = "";   // 显示预测的动作标签
+let poseLabelVelocity = "";
+let poseLabelAcceleration = "";
 let statusText = "Stopped";  // 当前状态文本（右上角显示）
 
 // ml5.timeSeries 模型
-let classifier;
-let modelDetails;
+// let classifier;
+// let modelDetails;
 
 // 用于连续预测的滑动窗口
 let sequence = [];    // 每个元素为一帧的对象
 let frameCount = 0;
+let prevTime = 0; // 全局变量，用于保存上一帧的播放时间
+
 
 // 参数设置
 const FPS = 30;
@@ -27,11 +29,28 @@ const dt = 1 / FPS;
 // 检测状态（通过按 d 键启动/停止）
 let detecting = false;
 
-// 构造 classifier 输入名称数组，注意：训练时使用加速度特征，每帧 33 个特征，键为 "A0"～"A32"
-let inputNames = [];
-for (let i = 0; i < 33; i++) {
-  inputNames.push(`Acc${i}`);
-}
+
+// 两个 timeSeries 模型
+let classifierVelocity;
+let classifierAcceleration;
+
+// 模型文件信息
+// let velocityModelDetails = {
+//   model: "model/Mode_Velocity_test5/model.json",  
+//     metadata: "model/Mode_Velocity_test5/model_meta.json",
+//     weights: "model/Mode_Velocity_test5/model.weights.bin",
+// };
+let accelerationModelDetails = {
+  model: "model/Mode_Acceleration_test6/model.json",  
+    metadata: "model/Mode_Acceleration_test6/model_meta.json",
+    weights: "model/Mode_Acceleration_test6/model.weights.bin",
+};
+
+// // 构造 classifier 输入名称数组，注意：训练时使用加速度特征，每帧 33 个特征，键为 "A0"～"A32"
+// let inputNames = [];
+// for (let i = 0; i < 33; i++) {
+//   inputNames.push(`Acc${i}`);
+// }
 
 // 文件上传按钮
 let fileInput;
@@ -46,7 +65,8 @@ function preload() {
     dataMode: "spatial",
     debug: true,
   };
-  classifier = ml5.timeSeries(options);
+  classifierVelocity = ml5.timeSeries(options);
+  classifierAcceleration = ml5.timeSeries(options);
 }
 
 function setup() {
@@ -56,14 +76,16 @@ function setup() {
   fileInput = createFileInput(handleFile);
   fileInput.position(10, (windowHeight - fileInput.elt.clientHeight) / 4);
 
-  // 这里不创建实时摄像头 video，由上传的视频创建
-  // 加载预训练模型
-  modelDetails = {
-    model: "model/Model_Acceleration_test6/model.json",  
-    metadata: "model/Model_Acceleration_test6/model_meta.json",
-    weights: "model/Model_Acceleration_test6/model.weights.bin",
-  };
-  classifier.load(modelDetails, modelLoaded);
+  // load pre-trained models
+  classifierVelocity.load(velocityModelDetails, () => {
+    console.log("Velocity model loaded.");
+  }).catch(err => console.error("Velocity model loading error:", err));
+  
+  // load pre-trained models - acceleration
+  classifierAcceleration.load(accelerationModelDetails, () => {
+    console.log("Acceleration model loaded.");
+  }).catch(err => console.error("Acceleration model loading error:", err));
+  
   console.log("Press 'd' to start detection.");
 }
 
@@ -139,14 +161,16 @@ function draw() {
   // 在屏幕中央显示预测结果
   fill(255, 0, 255);
   noStroke();
-  textSize(52);
-  textAlign(CENTER, CENTER);
-  text(poseLabel, width / 2, height / 2);
+  textSize(36);
+  textAlign(LEFT, CENTER);
+  text(`Velocity: ${poseLabelVelocity}`, width / 16, height / 4);
+  text(`Acceleration: ${poseLabelAcceleration}`, width / 16, height / 4 + 50);
 
   // 在左上角显示模型文件名
   textSize(32);
   textAlign(LEFT, TOP);
-  text(modelDetails.model, 10, 10);
+  text(velocityModelDetails.model, 10, 10);
+  text(accelerationModelDetails.model, 10, 30);
 
   // 在右上角显示当前状态
   textSize(24);
@@ -222,8 +246,21 @@ function computeJointAccelerationFeatures(frames) {
 
 // 持续预测：仅在 detecting 为 true 时采集数据并预测
 function predictPose() {
+  // 检查视频是否循环播放
+  if (video) {
+    let currentTime = video.time();
+    // 如果当前时间小于上一次的时间，则说明视频重置了
+    if (currentTime < prevTime) {
+      console.log("Video loop detected, resetting sequence.");
+      sequence = [];  // 清空滑动窗口
+    }
+    prevTime = currentTime;  // 更新 prevTime
+  }
+
+  // console.log("predictPose() triggered, frameCount:", frameCount);
   if (detecting && poses.length > 0) {
     let pose = poses[0];
+
     
     // 对于置信度低于阈值的关键点，将坐标置零（阈值 0.3）
     const threshold = 0.3;
@@ -251,8 +288,8 @@ function predictPose() {
     
     frameCount++;
     
-    // 每秒（大约每 30 帧）进行一次预测（确保采集满 600 帧）
-    if (frameCount % FPS === 0) {
+    // 每?秒（大约每 30 帧）进行一次预测（确保采集满 600 帧）
+    if (3*frameCount % FPS === 0) {  // 修改为每 2 秒预测一次
       // 若帧数不足，则用最后一帧补全
       if (sequence.length < CAPTURE_FRAMES) {
         console.log("Not enough frames (" + sequence.length + "), filling up with last frame...");
@@ -262,39 +299,84 @@ function predictPose() {
         }
       }
       console.log("Predicting with raw sequence length: " + sequence.length);
-      // 计算 acceleration 特征（返回的 accelerationSequence 为一个帧对象数组，每帧包含 33 个键 "A0"～"A32"）
-      let accelerationSequence = computeJointAccelerationFeatures(sequence);
-      classifier.predict(accelerationSequence, gotResults);
-    }
+      
+    //////////////////////////////////////////////
+    // predict with two models
+    //////////////////////////////////////////////
+      // 分别计算 velocity 特征和 acceleration 特征
+    let velocitySeq = computeJointVelocityFeatures(sequence);
+    let accelerationSeq = computeJointAccelerationFeatures(sequence);
+
+    // 分别调用两个模型预测
+    console.log("accelerationSeq length:", accelerationSeq.length);
+    console.log("accelerationSeq[0]:", accelerationSeq[0]);// 或 console.log(JSON.stringify(accelerationSeq));
+
+    classifierVelocity.predict(velocitySeq, gotResultsVelocity);
+    classifierAcceleration.predict(accelerationSeq, gotResultsAcceleration);
+    
+  }
   }
   setTimeout(predictPose, 1000 / FPS);
 }
 
-function gotResults(results) {
-  console.log("Full model output:", results);
+function gotResultsVelocity(results) {
+  console.log("Velocity model output:", results);  
   if (!results || results.length === 0) return;
   
   // 从模型输出中提取 label 和 confidence
   const { label: rawLabel, value } = results[0];
   const confidence = value !== undefined ? value : 0;
-  let predictedLabel, displayConfidence;
+  let displayConfidence;
   
   // 根据模型返回的标签（这里仅做示例，实际可根据训练时标签设定转换）
   if (rawLabel === "label") {
     if (confidence > 0.5) {
-      predictedLabel = "Sustained";   // 例如：A -> Sustained
+      poseLabelVelocity = "Slow";   // 例如：A -> Slow
       displayConfidence = confidence;
     } else {
-      predictedLabel = "Sudden";   // 例如：B -> Sudden
+      poseLabelVelocity = "Fast";   // 例如：B -> Fast
       displayConfidence = 1 - confidence;
     }
   } else {
-    predictedLabel = rawLabel.toUpperCase();
+    poseLabelVelocity = rawLabel.toUpperCase();
     displayConfidence = confidence;
   }
-  console.log("result:", results, "confidence:", confidence, "predictedLabel:", predictedLabel);
-  poseLabel = `${predictedLabel} (${displayConfidence.toFixed(2)})`;
+  console.log("result:", results, "confidence:", confidence, "poseLabelVelocity:", poseLabelVelocity);
+  poseLabelVelocity = `${poseLabelVelocity} (${displayConfidence.toFixed(2)})`;
+  console.log("Full model output (velocity):", JSON.stringify(results));
+
 }
+
+
+
+function gotResultsAcceleration(results) {
+  console.log("Acceleration model output:", results);  
+  if (!results || results.length === 0) return;
+  
+  // 从模型输出中提取 label 和 confidence
+  const { label: rawLabel, value } = results[0];
+  const confidence = value !== undefined ? value : 0;
+  let displayConfidence;
+  
+  // 根据模型返回的标签（这里仅做示例，实际可根据训练时标签设定转换）
+  if (rawLabel === "label") {
+    if (confidence > 0.5) {
+      poseLabelAcceleration = "Sustained";   // 例如：A -> Sustained
+      displayConfidence = confidence;
+    } else {
+      poseLabelAcceleration = "Sudden";   // 例如：B -> sudden
+      displayConfidence = 1 - confidence;
+    }
+  } else {
+    poseLabelAcceleration = rawLabel.toUpperCase();
+    displayConfidence = confidence;
+  }
+  //console.log("result:", results, "confidence:", confidence, "poseLabelAcceleration:", poseLabelAcceleration);
+  poseLabelAcceleration = `${poseLabelAcceleration} (${displayConfidence.toFixed(2)})`;
+  console.log("Full model output (acceleration):", results);
+
+}
+
 
 // 按 d 键切换检测状态：启动或停止连续预测
 function keyPressed() {
@@ -316,9 +398,11 @@ function startDetection() {
   setTimeout(() => {
     console.log("Detection started in continuous sliding window mode");
     // 重置预测相关变量
-    poseLabel = "";
+    poseLabelVelocity = "";
+    poseLabelAcceleration = "";
     sequence = [];
     frameCount = 0;
     detecting = true;
+    predictPose();
   }, 2000);
 }
