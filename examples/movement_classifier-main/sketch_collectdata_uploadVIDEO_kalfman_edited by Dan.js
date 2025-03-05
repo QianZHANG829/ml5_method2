@@ -1,5 +1,6 @@
 /// upload recorded video to get the keypoint data with bodyPose.
 // updated on mar 4， 10am
+// use 2 labels together.
 
 // 全局变量
 let video;
