@@ -21,7 +21,7 @@ let frameCount = 0;
 
 // 参数设置
 const FPS = 30;
-const CAPTURE_FRAMES = 20 * FPS; // 5 seconds, 150 frame
+const CAPTURE_FRAMES = 5 * FPS; // 5 seconds, 150 frame
 const dt = 1 / FPS;
 
 // 检测状态（通过按 d 键启动/停止）
@@ -73,9 +73,9 @@ function setup() {
 
   // 加载预训练模型
   modelDetails = {
-    model: "model/Model_Acceleration_test5/model.json",  
-    metadata: "model/Model_Acceleration_test5/model_meta.json",
-    weights: "model/Model_Acceleration_test5/model.weights.bin",
+    model: "model/Model_Acceleration_test6/model.json",  
+    metadata: "model/Model_Acceleration_test6/model_meta.json",
+    weights: "model/Model_Acceleration_test6/model.weights.bin",
   };
   classifier.load(modelDetails, modelLoaded);
   console.log("Press 'd' to start detection.");

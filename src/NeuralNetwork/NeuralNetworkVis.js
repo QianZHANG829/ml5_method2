@@ -123,7 +123,9 @@ class NeuralNetworkVis {
       {
         name: "Training Performance",
       },
-      ["loss", "accuracy"],
+      ['loss', 'val_loss', 'acc', 'val_acc'],
+      // ['loss', 'val_loss'],
+
       {
         height: this.config.height,
         callbacks: ["onEpochEnd"],

@@ -227,7 +227,7 @@ function keyPressed() {
   // 按 T 键开始训练
   if (key === 't' || key === 'T') {
     classifier.normalizeData();
-    classifier.train({ epochs: 120 }, finishedTraining);
+    classifier.train({ epochs: 80 }, finishedTraining);
   }
 }
 
