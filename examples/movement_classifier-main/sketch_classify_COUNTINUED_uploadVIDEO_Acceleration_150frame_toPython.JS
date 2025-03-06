@@ -344,6 +344,25 @@ function gotResults(results) {
   }
   console.log("result:", results, "confidence:", confidence, "predictedLabel:", predictedLabel);
   poseLabel = `${predictedLabel} (${displayConfidence.toFixed(2)})`;
+
+
+  // send acceleration data to server
+  fetch('http://localhost:8080/examples/movement_classifier-main/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ confidence: displayConfidence })
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log("服务器返回：", data);
+  })
+  .catch(error => {
+    console.error("发送数据错误：", error);
+  });
+
+
 }
 
 // 按 d 键切换检测状态：启动或停止连续预测
