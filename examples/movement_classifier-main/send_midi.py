@@ -1,8 +1,8 @@
 import mido
 import time
 
-# print(mido.get_output_names())
-port_name = "IAC Driver Bus 1"  # 请替换为实际虚拟 MIDI 端口名称
+# 使用 mido.get_output_names() 确认实际的 MIDI 输出端口名称
+port_name = "IAC Driver Bus 1"  # 替换为你的虚拟 MIDI 端口名称
 try:
     outport = mido.open_output(port_name)
 except IOError:
@@ -11,19 +11,19 @@ except IOError:
 
 def send_midi(confidence):
     """
-    根据传入的 confidence 值（0~1）映射 MIDI acceleration 并发送 MIDI 消息
+    将传入的 confidence 值（0~1）映射为 0~127 的数值，
+    并发送一个 MIDI 控制器消息（Control Change）。
+    在 Ableton Live 中，你可以将此 CC 消息映射到目标参数上（例如 beat 强弱）。
     """
-    Acceleration = int(confidence * 127)
-    Acceleration = max(0, min(127, Acceleration))
-    note = 60  # 示例：使用 MIDI note 60 (C4)
+    # 将 confidence 映射到 0～127 范围
+    cc_value = int(confidence * 127)
+    cc_value = max(0, min(127, cc_value))
     
-    # 发送 note_on 消息
-    msg_on = mido.Message('note_on', note=note, Acceleration=Acceleration)
-    outport.send(msg_on)
+    # 选择一个 MIDI 控制器编号（例如 CC#1）
+    cc_number = 1
     
-    # 短暂等待后发送 note_off 消息，模拟一次击打
-    time.sleep(0.1)
-    msg_off = mido.Message('note_off', note=note, Acceleration=0)
-    outport.send(msg_off)
+    # 构造并发送 Control Change 消息
+    msg = mido.Message('control_change', control=cc_number, value=cc_value)
+    outport.send(msg)
     
-    print(f"Sent MIDI message with acceleration {Acceleration}")
+    print(f"Sent MIDI CC message: control {cc_number}, value {cc_value}")
