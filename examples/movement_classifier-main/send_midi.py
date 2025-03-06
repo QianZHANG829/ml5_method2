@@ -13,17 +13,17 @@ def send_midi(confidence):
     """
     根据传入的 confidence 值（0~1）映射 MIDI velocity 并发送 MIDI 消息
     """
-    velocity = int(confidence * 127)
-    velocity = max(0, min(127, velocity))
+    Acceleration = int(confidence * 127)
+    Acceleration = max(0, min(127, Acceleration))
     note = 60  # 示例：使用 MIDI note 60 (C4)
     
     # 发送 note_on 消息
-    msg_on = mido.Message('note_on', note=note, velocity=velocity)
+    msg_on = mido.Message('note_on', note=note, Acceleration=Acceleration)
     outport.send(msg_on)
     
     # 短暂等待后发送 note_off 消息，模拟一次击打
     time.sleep(0.1)
-    msg_off = mido.Message('note_off', note=note, velocity=0)
+    msg_off = mido.Message('note_off', note=note, Acceleration=0)
     outport.send(msg_off)
     
-    print(f"Sent MIDI message with velocity {velocity}")
+    print(f"Sent MIDI message with velocity {Acceleration}")
