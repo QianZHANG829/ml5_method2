@@ -11,7 +11,7 @@ except IOError:
 
 def send_midi(confidence):
     """
-    根据传入的 confidence 值（0~1）映射 MIDI velocity 并发送 MIDI 消息
+    根据传入的 confidence 值（0~1）映射 MIDI acceleration 并发送 MIDI 消息
     """
     Acceleration = int(confidence * 127)
     Acceleration = max(0, min(127, Acceleration))
@@ -26,4 +26,4 @@ def send_midi(confidence):
     msg_off = mido.Message('note_off', note=note, Acceleration=0)
     outport.send(msg_off)
     
-    print(f"Sent MIDI message with velocity {Acceleration}")
+    print(f"Sent MIDI message with acceleration {Acceleration}")
