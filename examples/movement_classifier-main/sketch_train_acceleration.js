@@ -20,14 +20,22 @@ let frameCount = 0;
 // JSON 数据数组，每个元素对应一个文件
 let json_data = [];
 let fileNames = [
-  // Label A 文件 
+  // Label A 文件 - sustained
   // 'test4_A600frame_glideComR_10set1.json', //sustained/light
   // 'test4_A600frame_glideComR_10set2.json',
   // 'test4_A600frame_glideComR_10set3.json',
   // 'test4_A600frame_glideComR_10set4.json',
   // 'test4_A600frame_glideComR_10set5.json',
-  'test6_sustained_dance03_6set.json',
-  'test6_sustained_dance03_6set.json',
+
+  // 'test6_sustained_dance03_6set.json',
+  // 'test6_sustained_dance03_6set.json',
+
+  'test7_150frame_sustained_palm_15set.json',
+  'test7_150frame_sustained_knee_15set.json',
+  'test7_150frame_sustained_head_15set.json',
+  'test7_150frame_sustained_elbow_15set.json',
+
+
 
 
   // Label B 文件
@@ -35,8 +43,17 @@ let fileNames = [
   // 'test5_B600frame_glideComR_QuickStrong_10set4.json',
   // 'test5_B600frame_glideComR_QuickStrong_10set5.json',
   // 'test5_B600frame_glideComR_QuickStrong_20set2.json',
-  'test6_sudden_dancer01_8set.json',
-  'test6_sudden_dancer04_11set.json',
+  // 'test6_sudden_dancer01_8set.json',
+  // 'test6_sudden_dancer04_11set.json',
+
+  'test7_150frame_sudden_elbow_15set.json',
+  'test7_150frame_sudden_palm_15set.json',
+  'test7_150frame_sudden_jump_15set.json',
+  'test7_150frame_sudden_knee_15set.json',
+
+
+
+
 ];
 
 // acceleration feature
@@ -51,7 +68,7 @@ function preload() {
 
   // 加载所有 JSON 文件，存入 json_data 数组
   for (let i = 0; i < fileNames.length; i++) {
-    let path = "data/" + fileNames[i];
+    let path = "data/data_test7/" + fileNames[i]; // update folder of json file
     json_data[i] = loadJSON(path);
   }
 }
@@ -227,7 +244,7 @@ function keyPressed() {
   // 按 T 键开始训练
   if (key === 't' || key === 'T') {
     classifier.normalizeData();
-    classifier.train({ epochs: 80 }, finishedTraining);
+    classifier.train({ epochs: 200 }, finishedTraining);
   }
 }
 
