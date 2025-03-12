@@ -71,8 +71,8 @@ function setup() {
 
   // set up Kalman filters
   for (let i = 0; i < 33; i++) {
-    kalmanFiltersX.push(new KalmanFilter(0.05, 0.5 ));
-    kalmanFiltersY.push(new KalmanFilter(0.05, 0.5 ));
+    kalmanFiltersX.push(new KalmanFilter(0.05, 0.8 ));
+    kalmanFiltersY.push(new KalmanFilter(0.05, 0.8 ));
   }
   
 
@@ -308,27 +308,19 @@ function keyPressed() {
   }
   // 按 A 开始录制 label "A"
   else if (key === 'a' || key === 'A') {  
-    startCollection("A");
-
-    collectingLabel0 = 'fast';
-    startCollection();
-
+    startCollection("Sustained");
   }
   // 按 B 开始录制 label "B"
   else if (key === 'b' || key === 'B') {
-    startCollection("B");
-
-    collectingLabel0 = 'A';
-    startCollection();
-
+    startCollection("Sudden");
   } 
   
   else if (key === 'f' || key === 'F') {  
-    startCollection("F"); // FAST 
+    startCollection("Fast"); // FAST 
   }
   // 按 S 开始录制 label "S"
   else if (key === 's' || key === 'S') {
-    startCollection("S"); //Slow
+    startCollection("Slow"); //Slow
   }
   // 按 T 触发训练
   else if (key === 't' || key === 'T') {

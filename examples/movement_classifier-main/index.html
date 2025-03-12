@@ -12,12 +12,12 @@
     function sendAcceleration(confidence) {
       socket.emit('acceleration', { confidence: confidence });
     }
-    // 模拟发送数据：
-    setInterval(() => {
-      let simulatedConfidence = Math.random();
-      console.log('发送 confidence:', simulatedConfidence.toFixed(2));
-      sendAcceleration(simulatedConfidence);
-    }, 1000);
+    // // 模拟发送数据：
+    // setInterval(() => {
+    //   let simulatedConfidence = Math.random();
+    //   console.log('发送 confidence:', simulatedConfidence.toFixed(2));
+    //   sendAcceleration(simulatedConfidence);
+    // }, 1000);
   </script>
   <!-- p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
@@ -35,7 +35,7 @@
   <!-- <script src="sketch_collectdata_recording.js"></script> -->
 
   <!-- <script src="sketch_collectdata_uploadVIDEO.js"></script> -->
-  <!-- <script src="sketch_collectdata_uploadVIDEO_kalfman.js"></script> -->
+  <script src="sketch_collectdata_uploadVIDEO_kalfman.js"></script>
 
 
 
@@ -51,7 +51,7 @@
   <!-- <script src="sketch_classify_CONTINUED.js"></script> -->
 
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_velocity.js"></script> -->
-  <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame.JS"></script>
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame.JS"></script> -->
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_600frame.js"></script> -->
 
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Both.js"></script> -->
