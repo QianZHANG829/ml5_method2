@@ -347,20 +347,8 @@ function gotResults(results) {
 
 
   // send acceleration data to server
-  fetch('http://localhost:8080/examples/movement_classifier-main/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ confidence: displayConfidence })
-  })
-  .then(response => response.json())
-  .then(data => {
-    console.log("服务器返回：", data);
-  })
-  .catch(error => {
-    console.error("发送数据错误：", error);
-  });
+  // 通过 Socket.IO 发送数据
+  socket.emit('acceleration', { confidence: displayConfidence });
 
 
 }
