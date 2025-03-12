@@ -19,11 +19,18 @@ let frameCount = 0;
 // 文件上传按钮
 let fileInput;
 
+// 记录视频的实际宽高，方便在 videoLoaded 后使用
+let vidWidth = 640;
+let vidHeight = 480;
+
 const FPS = 30;
 const CAPTURE_FRAMES = 20 * FPS; // 20秒 x 30帧
 
 // 声明一个全局的输入名称数组（33 个关键点，每个关键点对应 x 和 y，共 66 个输入）
 let inputNames = [];
+
+let confidence = null; // 或 -1 代表未初始化
+
 
 function preload() {
   // 加载 BlazePose 模型
@@ -31,8 +38,8 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(640, 480);
-
+  createCanvas(vidWidth, vidHeight);
+  
   // 创建文件上传按钮，用于上传视频文件
   fileInput = createFileInput(handleFile);
   fileInput.position(10, (windowHeight - fileInput.elt.clientHeight) / 2);
@@ -74,6 +81,18 @@ function handleFile(file) {
 }
 
 function videoLoaded() {
+  if (!video) {
+    console.warn("video is not loaded");
+    return;
+  }
+  console.warn("video has been loaded");
+  // 获取原始宽高
+  vidWidth = video.width;
+  vidHeight = video.height;
+
+  // 创建与视频相同大小的画布
+  resizeCanvas(vidWidth, vidHeight);
+
   video.loop();
   bodyPose.detectStart(video, gotPoses);
   connections = bodyPose.getSkeleton();
@@ -123,20 +142,22 @@ function draw() {
 
 // 回调函数：处理检测到的人体关键点
 function gotPoses(results) {
+  if (!results || results.length === 0) return;  // 避免无效调用
+
   poses = results;
 
   // 如果正在录制且检测到至少一个人体
   if (collecting && poses.length > 0) {
     let pose = poses[0];
 
-      // 添加这段代码：对每个关键点判断置信度，低于阈值的设为 0
-      const threshold = 0.3;  // 根据需要设置你的阈值
-      pose.keypoints.forEach(keypoint => {
-        if (keypoint.confidence < threshold) {
-          keypoint.x = 0;
-          keypoint.y = 0;
-        }
-    });
+    //   // 添加这段代码：对每个关键点判断置信度，低于阈值的设为 0
+    //   const threshold = 0.3;  // 根据需要设置你的阈值
+    //   pose.keypoints.forEach(keypoint => {
+    //     if (keypoint.confidence < threshold) {
+    //       keypoint.x = 0;
+    //       keypoint.y = 0;
+    //     }
+    // });
 
     // 统计有效的关键点和非0坐标数量
     let validKeypoints = 0;    // 有效关键点个数（判断 x,y 至少一个不为 0）
