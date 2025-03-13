@@ -29,11 +29,14 @@ let fileNames = [
 
   // 'test6_sustained_dance03_6set.json',
   // 'test6_sustained_dance03_6set.json',
-
-  'test7_150frame_sustained_palm_15set.json',
-  'test7_150frame_sustained_knee_15set.json',
-  'test7_150frame_sustained_head_15set.json',
-  'test7_150frame_sustained_elbow_15set.json',
+  
+  //sustained and slow 115 data in total
+  'test7_150frame_sustained_palm_18set.json',
+  'test7_150frame_sustained_knee_26set.json',
+  'test7_150frame_sustained_head_17set.json',
+  'test7_150frame_sustained_elbow_25set.json',
+  'test7_150frame_sustained_finger_15set.json',
+  'test7_150frame_sustained_foot_14set.json',
 
 
 
@@ -46,13 +49,11 @@ let fileNames = [
   // 'test6_sudden_dancer01_8set.json',
   // 'test6_sudden_dancer04_11set.json',
 
-  'test7_150frame_sudden_elbow_15set.json',
-  'test7_150frame_sudden_palm_15set.json',
-  'test7_150frame_sudden_jump_15set.json',
-  'test7_150frame_sudden_knee_15set.json',
-
-
-
+  //sudden and slow 91 data in total
+  'test7_150frame_sudden_elbow_20set.json',
+  'test7_150frame_sudden_palm_32set.json',
+  'test7_150frame_sudden_jump_21set.json',
+  'test7_150frame_sudden_knee_18set.json',
 
 ];
 

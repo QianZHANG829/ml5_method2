@@ -1,5 +1,4 @@
 /// upload recorded video to get the keypoint data with bodyPose.
-// updated on mar 4， 10am
 
 // 全局变量
 let video;
@@ -7,57 +6,44 @@ let bodyPose;
 let poses = [];       // 存储检测到的所有人的关键点
 let connections;      // 用于画骨架连接的索引
 
-
-// 记录视频的实际宽高，方便在 videoLoaded 后使用
-let vidWidth = 640;
-let vidHeight = 480;
-
 // timeSeries 模型
 let classifier;
 
 // 录制逻辑
 let collecting = false;
 let collectingLabel = "";
-
-// let collectingLabel0
-// let collectingLabel1
-
-
 let sequence = [];    // 每个元素为一个帧的对象（而非纯数组）
 let frameCount = 0;
 
 
 // 文件上传按钮
 let fileInput;
-
 //video play button
 let playButton, videoSlider;
 let controlBar; // 控制条容器
 
 
+// 记录视频的实际宽高，方便在 videoLoaded 后使用
+let vidWidth = 640;
+let vidHeight = 480;
+
 const FPS = 30;
-const CAPTURE_FRAMES = 5 * FPS; // 5秒 x 30帧
+const CAPTURE_FRAMES = 5 * FPS; // 20秒 x 30帧
 
 // 声明一个全局的输入名称数组（33 个关键点，每个关键点对应 x 和 y，共 66 个输入）
 let inputNames = [];
 
-let kalmanFiltersX = [];
-let kalmanFiltersY = [];
-
-
-let totalMissingCount = 0;
-
+let confidence = null; // 或 -1 代表未初始化
 
 
 function preload() {
   // 加载 BlazePose 模型
-  bodyPose = ml5.bodyPose("BlazePose", modelReady);
+  bodyPose = ml5.bodyPose("BlazePose",modelReady);
 }
 
 function setup() {
-  // 先创建一个默认大小的画布，后续在 videoLoaded() 中再根据视频宽高 resize
   createCanvas(vidWidth, vidHeight);
-
+  
   // 创建文件上传按钮，用于上传视频文件
   fileInput = createFileInput(handleFile);
   fileInput.position(10, (windowHeight - fileInput.elt.clientHeight) / 2);
@@ -69,12 +55,6 @@ function setup() {
   // video.size(640, 480);
   // video.hide();
 
-  // set up Kalman filters
-  for (let i = 0; i < 33; i++) {
-    kalmanFiltersX.push(new KalmanFilter(0.05, 0.8 ));
-    kalmanFiltersY.push(new KalmanFilter(0.05, 0.8 ));
-  }
-  
 
   // 获取骨架连线索引（用于绘制骨架）
   connections = bodyPose.getSkeleton();
@@ -94,7 +74,7 @@ function setup() {
     debug: true,
   };
   classifier = ml5.timeSeries(options);
-  console.log("Setup done. Press A/B to record, S to save.update");
+  console.log("Setup done. Press A/B to record, S to save.");
 }
 
 function handleFile(file) {
@@ -108,6 +88,11 @@ function handleFile(file) {
 }
 
 function videoLoaded() {
+  if (!video) {
+    console.warn("video is not loaded");
+    return;
+  }
+  console.warn("video has been loaded");
   // 获取原始宽高
   vidWidth = video.width;
   vidHeight = video.height;
@@ -154,22 +139,12 @@ function modelReady() {
 
 function draw() {
   // 绘制视频图像
-  if (video) {
+  if (video){
     image(video, 0, 0, width, height);
   }
 
   if (video && videoSlider && video.time && video.duration) { 
     videoSlider.value(video.time()); 
-  }
-
-
-  // 自动更新滑块（如果视频支持 time() 和 duration()）
-  // 这里的示例视频使用摄像头，不支持 time()，所以实际使用中你需要在 videoLoaded() 回调中创建 slider，并更新最大值
-  if (video && videoSlider && video.time && video.duration) {
-    // 如果用户没有正在操作滑块，则自动更新其值
-    if (document.activeElement !== videoSlider.elt) {
-      videoSlider.value(video.time());
-    }
   }
 
   // 绘制检测到的关键点和骨架连线
@@ -217,51 +192,31 @@ function draw() {
 
 // 回调函数：处理检测到的人体关键点
 function gotPoses(results) {
+  if (!results || results.length === 0) return;  // 避免无效调用
+
   poses = results;
 
   // 如果正在录制且检测到至少一个人体
   if (collecting && poses.length > 0) {
     let pose = poses[0];
 
-    // 每一帧统计缺失的关键点数量
-    let missingCountFrame = 0;
-    const threshold = 0.3;  // 根据需要设置你的阈值
 
-    pose.keypoints.forEach((keypoint, i) => {
-      if (keypoint.confidence < threshold) {
-        missingCountFrame++;  // 统计当前帧缺失的点
-        let predX = kalmanFiltersX[i].predict();
-        let predY = kalmanFiltersY[i].predict();
-        console.log(`Keypoint ${i} 低置信度(confidence: ${keypoint.confidence.toFixed(2)}): 原始(${keypoint.x.toFixed(2)}, ${keypoint.y.toFixed(2)}) -> 预测(${predX.toFixed(2)}, ${predY.toFixed(2)})`);
-        keypoint.x = predX;
-        keypoint.y = predY;
-
-      } else {
-        let rawX = keypoint.x;
-        let rawY = keypoint.y;
-        keypoint.x = kalmanFiltersX[i].filter(keypoint.x);
-        keypoint.y = kalmanFiltersY[i].filter(keypoint.y);
-        console.log(`Keypoint ${i} 高置信度 (confidence: ${keypoint.confidence.toFixed(2)}): 原始(${rawX.toFixed(2)}, ${rawY.toFixed(2)}) -> 平滑(${keypoint.x.toFixed(2)}, ${keypoint.y.toFixed(2)})`);
+    // 统计有效的关键点和非0坐标数量
+    let validKeypoints = 0;    // 有效关键点个数（判断 x,y 至少一个不为 0）
+    let nonZeroCoordinates = 0; // 非0的坐标数量（x 和 y 分开计算，总共 66 个坐标）
+    for (let i = 0; i < pose.keypoints.length; i++) {
+      // 如果该关键点的 x 或 y 有一个不为 0，则认为该关键点有效
+      if (pose.keypoints[i].x !== 0 || pose.keypoints[i].y !== 0) {
+        validKeypoints++;
       }
-    });
-
-    // 更新全局缺失统计
-    totalMissingCount += missingCountFrame;
-    console.log(`Frame ${frameCount}: Missing keypoints = ${missingCountFrame}, Total missing so far = ${totalMissingCount}`);
-    
-    // data normalization and center into the canvas
-    let sumX = 0, sumY = 0;
-    for (let i =0; i<pose.keypoints.length;i++){
-      sumX += pose.keypoints[i].x;
-      sumY += pose.keypoints[i].y;
+      if (pose.keypoints[i].x !== 0) nonZeroCoordinates++;
+      if (pose.keypoints[i].y !== 0) nonZeroCoordinates++;
     }
-    let avgX = sumX / pose.keypoints.length;
-    let avgY = sumY / pose.keypoints.length;
+    // 输出每一帧的统计信息，比如有效关键点个数（33 个中的有效数）和非0坐标数量（66 个中的有效数）
+    console.log(
+      `Frame ${frameCount}: Valid keypoints = ${validKeypoints}/33, Non-zero coordinates = ${nonZeroCoordinates}/66`
+    );
 
-    for (let i=0; i<pose.keypoints.length;i++) {
-      pose.keypoints[i].x=pose.keypoints[i].x - avgX + width/2;
-      pose.keypoints[i].y=pose.keypoints[i].y - avgY + height/2;
-    }
 
     let frameArray = [];
 
@@ -289,20 +244,13 @@ function gotPoses(results) {
       // 将该时序数据（一个包含多个帧对象的数组）作为一个样本添加到模型中
       classifier.addData(sequence, { label: collectingLabel });
 
-      // collect 2 target labels for each sequence
-      // classifier.addData(sequence, [collectingLabel0, collectingLabel1]);
-
-
-
       // 重置时序数据和帧计数
       sequence = [];
       frameCount = 0;
-      // 这里可以输出整体的缺失统计结果
-      console.log(`Total missing keypoints in sequence: ${totalMissingCount}`);
-      // 如果需要统计每个样本后重置 totalMissingCount，可在此处重置
-      totalMissingCount = 0;
     }
   }
+  // 如果没有检测到人体，则可以允许再次录制
+  // 这里可选：你也可以设置 collecting = false; 以确保录制下一次数据
 }
 
 function keyPressed() {
@@ -336,7 +284,7 @@ function keyPressed() {
   }
 }
 
-// 开始录制数据，录制前延时2秒
+// 开始录制数据，录制前延时1秒
 function startCollection(label) {
   console.log(`Will start collecting label=${label} in 1s...`);
   setTimeout(() => {
@@ -345,13 +293,13 @@ function startCollection(label) {
     collectingLabel = label;
     sequence = [];
     frameCount = 0;
-  }, 30); //
+  }, 1000);
 }
 
 
 function finishedTraining() {
-  console.log("模型训练完成！");
-  classifier.save();
+    console.log("模型训练完成！");
+    classifier.save();
 }
 
 // for play video 
