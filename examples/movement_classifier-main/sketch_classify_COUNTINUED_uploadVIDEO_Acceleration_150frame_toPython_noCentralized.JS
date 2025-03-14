@@ -70,9 +70,15 @@ function setup() {
 
   // 加载预训练模型
   modelDetails = {
-    model: "model/Model_Acceleration_test6/model.json",  
-    metadata: "model/Model_Acceleration_test6/model_meta.json",
-    weights: "model/Model_Acceleration_test6/model.weights.bin",
+
+    model: "model/Model_Acceleration_test7/model.json",  
+    metadata: "model/Model_Acceleration_test7/model_meta.json",
+    weights: "model/Model_Acceleration_test7/model.weights.bin",
+
+    // model: "model/Model_Acceleration_test6/model.json",  
+    // metadata: "model/Model_Acceleration_test6/model_meta.json",
+    // weights: "model/Model_Acceleration_test6/model.weights.bin",
+
   };
   classifier.load(modelDetails, modelLoaded);
   console.log("Press 'd' to start detection.");
