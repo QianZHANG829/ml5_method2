@@ -157,14 +157,8 @@ function draw() {
     }
   }
 
-  // 在屏幕中央显示预测结果
-  fill(255, 0, 255);
-  noStroke();
-  textSize(52);
-  textAlign(CENTER, CENTER);
-  text(poseLabel, width / 2, height / 2);
-
   // 在左上角显示模型文件名
+  fill(255, 0, 255);
   textSize(32);
   textAlign(LEFT, TOP);
   text(modelDetails.model, 10, 10);
@@ -174,6 +168,19 @@ function draw() {
   fill(255);
   textAlign(RIGHT, TOP);
   text(statusText, width - 10, 10);
+
+  // 在屏幕中央显示预测结果
+  noStroke();
+  textSize(52);
+  textAlign(CENTER, CENTER);
+  if (poseLabel.includes("Sudden")) {
+    fill(0, 255, 0); // 若预测标签为 "Sudden"，则显示为绿色
+  } else {
+    fill(255, 0, 255); // 其他情况（如 Sustained）维持原有颜色
+  }
+  text(poseLabel, width / 2, height / 2);
+
+
 }
 
 function gotPoses(results) {
