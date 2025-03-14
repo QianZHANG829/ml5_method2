@@ -2,8 +2,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>TimeSeries + bodyPose Example</title>
-  <!-- <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> -->
-  <!-- <script>
+
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <script>
     const socket = io('http://127.0.0.1:5000');
     socket.on('response', function(data) {
       console.log('服务器反馈:', data);
@@ -12,8 +13,8 @@
     function sendAcceleration(confidence) {
       socket.emit('acceleration', { confidence: confidence });
     }
-    
-  </script> -->
+  </script>
+  
   <!-- p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
 
@@ -31,7 +32,7 @@
 
   <!-- <script src="sketch_collectdata_uploadVIDEO.js"></script> -->
   <!-- <script src="sketch_collectdata_uploadVIDEO_noThreashold.js"></script> -->
-  <script src="sketch_collectdata_uploadVIDEO_noThreashold_noCentralized.js"></script>
+  <!-- <script src="sketch_collectdata_uploadVIDEO_noThreashold_noCentralized.js"></script> -->
 
 
   <!-- <script src="sketch_collectdata_uploadVIDEO_kalfman.js"></script> -->
@@ -59,6 +60,8 @@
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Both_150frame.js"></script> -->
 
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame_toPython.JS"></script> -->
+  <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame_toPython_noCentralized.JS"></script>
+
 
 
 </head>
