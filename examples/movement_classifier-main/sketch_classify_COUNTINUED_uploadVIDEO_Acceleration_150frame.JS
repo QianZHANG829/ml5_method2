@@ -73,13 +73,9 @@ function setup() {
 
   // 加载预训练模型
   modelDetails = {
-    // model: "model/Model_Acceleration_test6/model.json",  
-    // metadata: "model/Model_Acceleration_test6/model_meta.json",
-    // weights: "model/Model_Acceleration_test6/model.weights.bin",
-
-    model: "model/Model_Acceleration_test7/model.json",  
-    metadata: "model/Model_Acceleration_test7/model_meta.json",
-    weights: "model/Model_Acceleration_test7/model.weights.bin",
+    model: "model/Model_Acceleration_test6/model.json",  
+    metadata: "model/Model_Acceleration_test6/model_meta.json",
+    weights: "model/Model_Acceleration_test6/model.weights.bin",
   };
   classifier.load(modelDetails, modelLoaded);
   console.log("Press 'd' to start detection.");
@@ -119,12 +115,6 @@ function modelLoaded() {
   // 启动预测循环（内部会根据 detecting 状态决定是否采集数据）
   predictPose();
 }
-
-// ─────────────────────────────────────────────
-// draw() 中只负责画视频和 poses 数组中的关键点
-// 如果 detecting=false，则骨骼跟随原始视频
-// 如果 detecting=true，则骨骼已在 predictPose() 中被居中
-// ─────────────────────────────────────────────
 
 function draw() {
   // 绘制视频图像
@@ -256,9 +246,7 @@ function computeJointAccelerationFeatures(frames) {
   return accelerationFrames;
 }
 
-// ─────────────────────────────────────────────
-// 持续预测：仅在 detecting 为 true 时进行“居中 + 滑动窗口 + 预测”
-// ─────────────────────────────────────────────
+// 持续预测：仅在 detecting 为 true 时采集数据并预测
 function predictPose() {
   if (detecting && poses.length > 0) {
     let pose = poses[0];
@@ -313,7 +301,7 @@ function predictPose() {
     
     frameCount++;
     
-    // 每秒（大约每 30 帧）进行一次预测
+    // 每秒（大约每 30 帧）进行一次预测（确保采集满 600 帧）
     if (frameCount % FPS === 0) {
       // 若帧数不足，则用最后一帧补全
       if (sequence.length < CAPTURE_FRAMES) {

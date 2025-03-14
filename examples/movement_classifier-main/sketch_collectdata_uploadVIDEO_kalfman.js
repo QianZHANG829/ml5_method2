@@ -158,11 +158,6 @@ function draw() {
     image(video, 0, 0, width, height);
   }
 
-  if (video && videoSlider && video.time && video.duration) { 
-    videoSlider.value(video.time()); 
-  }
-
-
   // 自动更新滑块（如果视频支持 time() 和 duration()）
   // 这里的示例视频使用摄像头，不支持 time()，所以实际使用中你需要在 videoLoaded() 回调中创建 slider，并更新最大值
   if (video && videoSlider && video.time && video.duration) {
