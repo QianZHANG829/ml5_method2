@@ -19,8 +19,8 @@ let playButton, videoSlider;
 let controlBar;         // 控制条容器
 
 // 视频宽高（默认值），后续根据上传视频调整
-let vidWidth = 640;
-let vidHeight = 480;
+let vidWidth = 1920;
+let vidHeight = 1080;
 
 const FPS = 30;
 const CAPTURE_FRAMES = 5 * FPS; // 5秒 x 30帧
@@ -85,10 +85,10 @@ function videoLoaded() {
   }
   console.log("video has been loaded");
   
-  // 获取视频的原始宽高，并调整画布大小
-  vidWidth = video.width;
-  vidHeight = video.height;
-  resizeCanvas(vidWidth, vidHeight);
+  // // 获取视频的原始宽高，并调整画布大小
+  // vidWidth = video.width;
+  // vidHeight = video.height;
+  // resizeCanvas(vidWidth, vidHeight);
   
   // 循环播放视频，并开始检测关键点
   video.loop();
@@ -126,46 +126,60 @@ function modelReady() {
 }
 
 function draw() {
+  // 填充黑色背景
+  background(0);
   // 绘制视频图像
   if (video) {
-    image(video, 0, 0, width, height);
-  }
-  
-  // 自动更新进度条，使其跟随视频播放
-  if (video && videoSlider && video.time && video.duration) {
-    videoSlider.value(video.time());
-  }
-  
-  // 绘制检测到的关键点和骨架连线
-  for (let i = 0; i < poses.length; i++) {
-    let pose = poses[i];
+    //image(video, 0, 0, width, height);
     
-    // 绘制骨架连线
-    for (let j = 0; j < connections.length; j++) {
-      let pointA = pose.keypoints[connections[j][0]];
-      let pointB = pose.keypoints[connections[j][1]];
-      if (pointA.confidence > 0.1 && pointB.confidence > 0.1) {
-        stroke(255, 0, 0);
-        strokeWeight(2);
-        line(pointA.x, pointA.y, pointB.x, pointB.y);
-      }
+    // 使用 video.elt.videoWidth / video.elt.videoHeight 获取原始视频尺寸
+    let videoWidth = video.elt.videoWidth;
+    let videoHeight = video.elt.videoHeight;
+    // 计算将视频置于画布中央的偏移量
+    let xOffset = (width - videoWidth) / 2;
+    let yOffset = (height - videoHeight) / 2;
+    // 将视频绘制在画布中间，不进行缩放
+    image(video, xOffset, yOffset, videoWidth, videoHeight);
+
+  
+    // 自动更新进度条，使其跟随视频播放
+    if (video && videoSlider && video.time && video.duration) {
+      videoSlider.value(video.time());
     }
+  
     
-    // 绘制关键点
-    for (let j = 0; j < pose.keypoints.length; j++) {
-      let keypoint = pose.keypoints[j];
-      if (keypoint.confidence < 0.3) {
-        fill(0, 0, 255);  // 低置信度用蓝色表示
-        noStroke();
-        circle(keypoint.x, keypoint.y, 12);
-      } else {
-        fill(0, 255, 0);  // 高置信度用绿色表示
-        noStroke();
-        circle(keypoint.x, keypoint.y, 10);
+    // 绘制检测到的关键点和骨架连线（添加偏移量）
+    for (let i = 0; i < poses.length; i++) {
+      let pose = poses[i];
+      
+      // 绘制骨架连线
+      for (let j = 0; j < connections.length; j++) {
+        let pointA = pose.keypoints[connections[j][0]];
+        let pointB = pose.keypoints[connections[j][1]];
+        if (pointA.confidence > 0.1 && pointB.confidence > 0.1) {
+          stroke(255, 0, 0);
+          strokeWeight(2);
+          line(pointA.x + xOffset, pointA.y + yOffset, pointB.x + xOffset, pointB.y + yOffset);
+        }
+      }
+      
+      // 绘制关键点
+      for (let j = 0; j < pose.keypoints.length; j++) {
+        let keypoint = pose.keypoints[j];
+        if (keypoint.confidence < 0.3) {
+          fill(0, 0, 255);  // 低置信度用蓝色
+          noStroke();
+          circle(keypoint.x + xOffset, keypoint.y + yOffset, 12);
+        } else {
+          fill(0, 255, 0);  // 高置信度用绿色
+          noStroke();
+          circle(keypoint.x + xOffset, keypoint.y + yOffset, 10);
+        }
       }
     }
   }
 }
+
 
 // 回调函数：处理检测到的人体关键点
 function gotPoses(results) {
