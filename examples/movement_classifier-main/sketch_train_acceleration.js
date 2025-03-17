@@ -35,8 +35,8 @@ let fileNames = [
   // 'test7_150frame_sustained_head_15set.json',
   // 'test7_150frame_sustained_elbow_15set.json',
 
-  // sustained move test 8 -  150 data
-  'test8_150frame_sustained_back_15set.json',
+  // sustained move test 8 -  135 data
+  //'test8_150frame_sustained_back_15set.json',
   'test8_150frame_sustained_elbow_21set.json',
   'test8_150frame_sustained_finger_17set.json',
   'test8_150frame_sustained_foot_15set.json',
@@ -116,7 +116,7 @@ function setup() {
     dataMode: "spatial",  // spatial 模式下每个样本的 xs 是一个对象
     inputs: inputNames,
     outputs: ["label"],
-    learningRate: 0.0005,
+    learningRate: 0.0002,
     debug: true,
   };
   classifier = ml5.timeSeries(options);
@@ -263,7 +263,7 @@ function keyPressed() {
   // 按 T 键开始训练
   if (key === 't' || key === 'T') {
     classifier.normalizeData();
-    classifier.train({ epochs: 200 }, finishedTraining);
+    classifier.train({ epochs: 350, validationSplit:0.1, shuffle:true }, finishedTraining);
   }
 }
 

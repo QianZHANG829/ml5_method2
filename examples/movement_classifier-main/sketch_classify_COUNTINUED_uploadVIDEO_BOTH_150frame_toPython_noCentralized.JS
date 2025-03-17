@@ -1,19 +1,34 @@
 // ─────────────────────────────────────────────
-// 使用上传视频、计算 acceleration 特征进行动作分类预测
+// 使用上传视频、计算 velocity 和 acceleration 特征进行动作分类预测
 // ─────────────────────────────────────────────
-
 
 // 全局变量
 let video;
 let bodyPose;
 let poses = [];       // 存储检测到的所有人的关键点
 let connections;      // 用于绘制骨架连线的索引
-let poseLabel = "";   // 显示预测的动作标签
+
+// 显示预测结果
+let poseLabelVelocity = "";
+let poseLabelAcceleration = "";
 let statusText = "Stopped";  // 当前状态文本（右上角显示）
 
-// ml5.timeSeries 模型
-let classifier;
-let modelDetails;
+// ml5.timeSeries 模型分类器
+let classifierVelocity;
+let classifierAcceleration;
+
+// 模型文件信息（请根据实际情况修改文件路径）
+let velocityModelDetails = {
+  model: "model/Model_Velocity_test8/model.json",  
+  metadata: "model/Model_Velocity_test8/model_meta.json",
+  weights: "model/Model_Velocity_test8/model.weights.bin",
+};
+
+let accelerationModelDetails = {
+  model: "model/Model_Acceleration_test8/model.json",  
+  metadata: "model/Model_Acceleration_test8/model_meta.json",
+  weights: "model/Model_Acceleration_test8/model.weights.bin",
+};
 
 // 用于连续预测的滑动窗口
 let sequence = [];    // 每个元素为一帧的对象
@@ -21,36 +36,27 @@ let frameCount = 0;
 
 // 参数设置
 const FPS = 30;
-const CAPTURE_FRAMES = 5 * FPS; // 5 seconds, 150 frame
+const CAPTURE_FRAMES = 5 * FPS; // 5 秒, 150 帧
 const dt = 1 / FPS;
 
 // 检测状态（通过按 d 键启动/停止）
 let detecting = false;
-
-// 构造 classifier 输入名称数组，注意：训练时使用加速度特征，每帧 33 个特征，键为 "A0"～"A32"
-let inputNames = [];
-for (let i = 0; i < 33; i++) {
-  inputNames.push(`Acc${i}`);
-}
-
-// set kalman filter
-let kalmanFiltersX = [];
-let kalmanFiltersY = [];
 
 // 文件上传按钮
 let fileInput;
 
 function preload() {
   // 加载 BlazePose 模型
-  bodyPose = ml5.bodyPose("BlazePose", modelReady); 
+  bodyPose = ml5.bodyPose("BlazePose", modelReady);
   
-  // 初始化 ml5.timeSeries 模型（这里用于预测，已训练好的模型无需 inputs/outputs 定义）
+  // 初始化 ml5.timeSeries 模型
   let options = {
     task: "classification",
     dataMode: "spatial",
     debug: true,
   };
-  classifier = ml5.timeSeries(options);
+  classifierVelocity = ml5.timeSeries(options);
+  classifierAcceleration = ml5.timeSeries(options);
 }
 
 function setup() {
@@ -60,27 +66,15 @@ function setup() {
   fileInput = createFileInput(handleFile);
   fileInput.position(10, (windowHeight - fileInput.elt.clientHeight) / 4);
 
-  // 这里不创建实时摄像头 video，由上传的视频创建
-
-  // set up Kalman filters
-  for (let i = 0; i < 33; i++) {
-    kalmanFiltersX.push(new KalmanFilter(0.05, 0.5 ));
-    kalmanFiltersY.push(new KalmanFilter(0.05, 0.5 ));
-  }
-
   // 加载预训练模型
-  modelDetails = {
-
-    model: "model/Model_Acceleration_test8/model.json",  
-    metadata: "model/Model_Acceleration_test8/model_meta.json",
-    weights: "model/Model_Acceleration_test8/model.weights.bin",
-
-    // model: "model/Model_Acceleration_test6/model.json",  
-    // metadata: "model/Model_Acceleration_test6/model_meta.json",
-    // weights: "model/Model_Acceleration_test6/model.weights.bin",
-
-  };
-  classifier.load(modelDetails, modelLoaded);
+  classifierVelocity.load(velocityModelDetails, () => {
+    console.log("Velocity model loaded.");
+  }).catch(err => console.error("Velocity model loading error:", err));
+  
+  classifierAcceleration.load(accelerationModelDetails, () => {
+    console.log("Acceleration model loaded.");
+  }).catch(err => console.error("Acceleration model loading error:", err));
+  
   console.log("Press 'd' to start detection.");
 }
 
@@ -95,11 +89,8 @@ function handleFile(file) {
 }
 
 function videoLoaded() {
-  // 获取原始宽高
-  const vidWidth = video.width;
-  const vidHeight = video.height;
-  // 创建与视频相同大小的画布
-  resizeCanvas(vidWidth, vidHeight);
+  // 根据视频原始宽高调整画布
+  resizeCanvas(video.width, video.height);
 
   video.loop();
   // 开始对上传的视频进行关键点检测
@@ -111,31 +102,20 @@ function modelReady() {
   console.log("BlazePose 模型加载完毕！");
 }
 
-function modelLoaded() {
-  console.log("Classifier 模型加载完毕！");
-  // 如果需要，预设模型预测标签，例如：
-  expectedLabels = ["A", "B"];
-  // 启动预测循环（内部会根据 detecting 状态决定是否采集数据）
-  predictPose();
-}
-
 function draw() {
   // 绘制视频图像
   if (video) {
     image(video, 0, 0, width, height);
   }
 
-  // 绘制检测到的关键点和骨架连线
+  // 绘制检测到的骨架连线和关键点
   for (let i = 0; i < poses.length; i++) {
     let pose = poses[i];
 
     // 绘制骨架连线
     for (let j = 0; j < connections.length; j++) {
-      let pointAIndex = connections[j][0];
-      let pointBIndex = connections[j][1];
-      let pointA = pose.keypoints[pointAIndex];
-      let pointB = pose.keypoints[pointBIndex];
-
+      let pointA = pose.keypoints[connections[j][0]];
+      let pointB = pose.keypoints[connections[j][1]];
       if (pointA.confidence > 0.1 && pointB.confidence > 0.1) {
         stroke(255, 0, 0);
         strokeWeight(2);
@@ -161,7 +141,8 @@ function draw() {
   fill(255, 0, 255);
   textSize(32);
   textAlign(LEFT, TOP);
-  text(modelDetails.model, 10, 10);
+  text(velocityModelDetails.model, 10, 10);
+  text(accelerationModelDetails.model, 10, 40);
 
   // 在右上角显示当前状态
   textSize(24);
@@ -172,15 +153,10 @@ function draw() {
   // 在屏幕中央显示预测结果
   noStroke();
   textSize(52);
-  textAlign(CENTER, CENTER);
-  if (poseLabel.includes("Sudden")) {
-    fill(0, 255, 0); // 若预测标签为 "Sudden"，则显示为绿色
-  } else {
-    fill(255, 0, 255); // 其他情况（如 Sustained）维持原有颜色
-  }
-  text(poseLabel, width / 2, height / 2);
-
-
+  fill(255, 0, 255);
+  textAlign(LEFT, CENTER);
+  text(`Velocity: ${poseLabelVelocity}`, width / 16, height / 4);
+  text(`Acceleration: ${poseLabelAcceleration}`, width / 16, height / 4 + 50);
 }
 
 function gotPoses(results) {
@@ -188,15 +164,11 @@ function gotPoses(results) {
 }
 
 // ─────────────────────────────
-// 计算加速度特征（按帧计算）：
-// ----------------------------------------------------------------
-// Input: frames array, where each element is an object with keys "x0", "y0", ..., "x32", "y32"
-// Output: an array where each element is a frame's acceleration feature object with keys "A0", "A1", …, "A32"
-//         A total of CAPTURE_FRAMES frames are returned (the last frame is a duplicate of the previous one)
+// 计算速度特征（按帧计算）：
+// 对连续帧计算速度：速度 = 两帧间欧氏距离 / dt
 function computeJointVelocityFeatures(frames) {
   let numJoints = 33;
   let velocityFrames = [];
-  // 计算连续帧之间的速度（速度 = 两帧间欧氏距离除以 dt）
   for (let i = 0; i < frames.length - 1; i++) {
     let frameVel = {};
     for (let j = 0; j < numJoints; j++) {
@@ -214,63 +186,54 @@ function computeJointVelocityFeatures(frames) {
     }
     velocityFrames.push(frameVel);
   }
-  // 为保持帧数一致，复制最后一帧的速度特征
+  // 复制最后一帧以保持帧数一致
   if (velocityFrames.length > 0) {
     velocityFrames.push({ ...velocityFrames[velocityFrames.length - 1] });
   }
   return velocityFrames;
 }
 
+// ─────────────────────────────
+// 计算加速度特征（按帧计算）：
+// 先计算速度，再计算加速度：加速度 = (后帧速度 - 当前帧速度) / dt
 function computeJointAccelerationFeatures(frames) {
-  // 先计算速度特征
   let velocityFrames = computeJointVelocityFeatures(frames);
   let numJoints = 33;
   let accelerationFrames = [];
-  
-  // 对连续的速度帧计算加速度：加速度 = (后帧速度 - 当前帧速度) / dt
   for (let i = 0; i < velocityFrames.length - 1; i++) {
     let frameAcc = {};
     for (let j = 0; j < numJoints; j++) {
       let key = "V" + j;
       let v_current = velocityFrames[i][key];
       let v_next = velocityFrames[i + 1][key];
-      let a = Math.abs((v_next - v_current)) / dt;
+      let a = Math.abs(v_next - v_current) / dt;
       frameAcc["Acc" + j] = a;
     }
     accelerationFrames.push(frameAcc);
   }
-  
-  // 为保持帧数一致，复制最后一帧的加速度特征
+  // 保持帧数一致
   if (accelerationFrames.length > 0) {
     accelerationFrames.push({ ...accelerationFrames[accelerationFrames.length - 1] });
   }
   return accelerationFrames;
 }
 
+// ─────────────────────────────
 // 持续预测：仅在 detecting 为 true 时采集数据并预测
 function predictPose() {
   if (detecting && poses.length > 0) {
     let pose = poses[0];
     
-    // 使用 Kalman Filter 对低置信度关键点进行平滑处理
-    const threshold = 0.3;
-    pose.keypoints.forEach((keypoint, i) => {
-      if (keypoint.confidence < threshold) {
-        let predX = kalmanFiltersX[i].predict();
-        let predY = kalmanFiltersY[i].predict();
-        console.log(`Keypoint ${i} low confidence (confidence: ${keypoint.confidence.toFixed(2)}): raw(${keypoint.x.toFixed(2)}, ${keypoint.y.toFixed(2)}) -> predict (${predX.toFixed(2)}, ${predY.toFixed(2)})`);
-        keypoint.x = predX;
-        keypoint.y = predY;
-      } else {
-        let rawX = keypoint.x;
-        let rawY = keypoint.y;
-        keypoint.x = kalmanFiltersX[i].filter(keypoint.x);
-        keypoint.y = kalmanFiltersY[i].filter(keypoint.y);
-        console.log(`Keypoint ${i} high confidence (confidence: ${keypoint.confidence.toFixed(2)}): raw(${rawX.toFixed(2)}, ${rawY.toFixed(2)}) -> smooth (${keypoint.x.toFixed(2)}, ${keypoint.y.toFixed(2)})`);
-      }
-    });
-
-    // 删除原来的动态中心化代码，直接使用原始关键点坐标
+    // // 对于置信度低于阈值的关键点，将坐标置零（阈值 0.3）
+    // const threshold = 0.3;
+    // pose.keypoints.forEach(keypoint => {
+    //   if (keypoint.confidence < threshold) {
+    //     keypoint.x = 0;
+    //     keypoint.y = 0;
+    //   }
+    // });
+    
+    // 构造当前帧的关键点坐标对象（格式： "x0", "y0", ..., "x32", "y32"）
     let rawFrameObj = {};
     for (let i = 0; i < 33; i++) {
       rawFrameObj["x" + i] = pose.keypoints[i].x;
@@ -298,43 +261,65 @@ function predictPose() {
         }
       }
       console.log("Predicting with raw sequence length: " + sequence.length);
-      // 计算 acceleration 特征
-      let accelerationSequence = computeJointAccelerationFeatures(sequence);
-      classifier.predict(accelerationSequence, gotResults);
+      
+      // 分别计算 velocity 和 acceleration 特征
+      let velocitySeq = computeJointVelocityFeatures(sequence);
+      let accelerationSeq = computeJointAccelerationFeatures(sequence);
+      
+      // 分别调用两个模型进行预测
+      classifierVelocity.predict(velocitySeq, gotResultsVelocity);
+      classifierAcceleration.predict(accelerationSeq, gotResultsAcceleration);
     }
   }
   setTimeout(predictPose, 1000 / FPS);
 }
 
-function gotResults(results) {
-  console.log("Full model output:", results);
+function gotResultsVelocity(results) {
   if (!results || results.length === 0) return;
   
-  // 从模型输出中提取 label 和 confidence
+  // 提取模型输出中的 label 与 confidence
   const { label: rawLabel, value } = results[0];
   const confidence = value !== undefined ? value : 0;
-  let predictedLabel, displayConfidence;
+  let displayConfidence;
   
-  // 根据模型返回的标签进行转换（示例）
   if (rawLabel === "label") {
     if (confidence > 0.5) {
-      predictedLabel = "Sustained";
+      poseLabelVelocity = "Slow";   // 示例转换
       displayConfidence = confidence;
     } else {
-      predictedLabel = "Sudden";
+      poseLabelVelocity = "Fast";
       displayConfidence = 1 - confidence;
     }
   } else {
-    predictedLabel = rawLabel.toUpperCase();
+    poseLabelVelocity = rawLabel.toUpperCase();
     displayConfidence = confidence;
   }
-  console.log("result:", results, "confidence:", confidence, "predictedLabel:", predictedLabel);
-  poseLabel = `${predictedLabel} (${displayConfidence.toFixed(2)})`;
-
-  // 通过 Socket.IO 发送加速度数据到服务器（如需要）
-  socket.emit('acceleration', { confidence: displayConfidence });
+  poseLabelVelocity = `${poseLabelVelocity} (${displayConfidence.toFixed(2)})`;
 }
 
+function gotResultsAcceleration(results) {
+  if (!results || results.length === 0) return;
+  
+  const { label: rawLabel, value } = results[0];
+  const confidence = value !== undefined ? value : 0;
+  let displayConfidence;
+  
+  if (rawLabel === "label") {
+    if (confidence > 0.5) {
+      poseLabelAcceleration = "Sustained";
+      displayConfidence = confidence;
+    } else {
+      poseLabelAcceleration = "Sudden";
+      displayConfidence = 1 - confidence;
+    }
+  } else {
+    poseLabelAcceleration = rawLabel.toUpperCase();
+    displayConfidence = confidence;
+  }
+  poseLabelAcceleration = `${poseLabelAcceleration} (${displayConfidence.toFixed(2)})`;
+}
+
+// ─────────────────────────────
 // 按 d 键切换检测状态：启动或停止连续预测
 function keyPressed() {
   if (key === 'd' || key === 'D') {
@@ -354,10 +339,11 @@ function startDetection() {
   // 延时 2 秒后启动检测
   setTimeout(() => {
     console.log("Detection started in continuous sliding window mode");
-    // 重置预测相关变量
-    poseLabel = "";
+    poseLabelVelocity = "";
+    poseLabelAcceleration = "";
     sequence = [];
     frameCount = 0;
     detecting = true;
+    predictPose();
   }, 2000);
 }
