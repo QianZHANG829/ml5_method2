@@ -20,24 +20,41 @@ let frameCount = 0;
 let json_data = [];
 let fileNames = [
   // Label A 文件
-  'test4_A600frame_glideComR_10set1.json', //sustained/light
-  'test4_A600frame_glideComR_10set2.json',
-  'test4_A600frame_glideComR_10set3.json',
-  'test4_A600frame_glideComR_10set4.json',
-  'test4_A600frame_glideComR_10set5.json',
+  // 'test4_A600frame_glideComR_10set1.json', //sustained/light
+  // 'test4_A600frame_glideComR_10set2.json',
+  // 'test4_A600frame_glideComR_10set3.json',
+  // 'test4_A600frame_glideComR_10set4.json',
+  // 'test4_A600frame_glideComR_10set5.json',
+
+  // label fast file
+  'test8_150frame_fast_dancer05_10set.json',
+  'test8_150frame_fast_dancer06_8set.json',
+  'test8_150frame_fast_dancer07_8set.json',
+  'test8_150frame_fast_dancer08_8set.json',
+  'test8_150frame_fast_dancer09_10set.json',
+  'test8_150frame_fast_hofesh01_15set.json',
+
 
   // Label B 文件
-  'test5_B600frame_glideComR_QuickStrong_10set3.json', //sudden/strong
-  'test5_B600frame_glideComR_QuickStrong_10set4.json',
-  'test5_B600frame_glideComR_QuickStrong_10set5.json',
-  'test5_B600frame_glideComR_QuickStrong_20set2.json',
+  // 'test5_B600frame_glideComR_QuickStrong_10set3.json', //sudden/strong
+  // 'test5_B600frame_glideComR_QuickStrong_10set4.json',
+  // 'test5_B600frame_glideComR_QuickStrong_10set5.json',
+  // 'test5_B600frame_glideComR_QuickStrong_20set2.json',
+
+  //labe slow files
+  'test8_150frame_slow_circlewalk_14set.json',
+  'test8_150frame_slow_elbow_20set.json',
+  'test8_150frame_slow_finger_17set.json',
+  'test8_150frame_slow_foot_15set.json',
+  'test8_150frame_slow_head_15set.json',
+
 ];
 
 // acceleration feature
 const FPS = 30;
-const expected_frames = 600;    // 每个样本期望的帧数
+const expected_frames = 150;    // 每个样本期望的帧数
 const dt = 1 / FPS;
-const CAPTURE_FRAMES = 20 * FPS; // 例如 20 秒（录制相关代码在此示例中不做修改）
+const CAPTURE_FRAMES = 5 * FPS; // 例如 20 秒（录制相关代码在此示例中不做修改）
 
 let velocities = [];  // 用于存储速度特征
 
@@ -48,7 +65,7 @@ function preload() {
 
   // 加载所有 JSON 文件，存入 json_data 数组
   for (let i = 0; i < fileNames.length; i++) {
-    let path = "data/" + fileNames[i];
+    let path = "data/data_test8_velocity/" + fileNames[i];
     json_data[i] = loadJSON(path);
   }
 }
@@ -77,7 +94,7 @@ function setup() {
     dataMode: "spatial",  // spatial 模式下每个样本的 xs 是一个对象
     inputs: inputNames,
     outputs: ["label"],
-    learningRate: 0.0001,
+    learningRate: 0.0002,
     debug: true,
   };
   classifier = ml5.timeSeries(options);
@@ -199,7 +216,7 @@ function keyPressed() {
   // 按 T 键开始训练
   if (key === 't' || key === 'T') {
     classifier.normalizeData();
-    classifier.train({ epochs: 200 }, finishedTraining);
+    classifier.train({ epochs: 100 }, finishedTraining);
   }
 }
 
