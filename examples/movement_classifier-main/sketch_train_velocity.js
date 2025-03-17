@@ -27,12 +27,12 @@ let fileNames = [
   // 'test4_A600frame_glideComR_10set5.json',
 
   // label fast file
-  'test8_150frame_fast_dancer05_10set.json',
-  'test8_150frame_fast_dancer06_8set.json',
-  'test8_150frame_fast_dancer07_8set.json',
-  'test8_150frame_fast_dancer08_8set.json',
-  'test8_150frame_fast_dancer09_10set.json',
-  'test8_150frame_fast_hofesh01_15set.json',
+  // 'test8_150frame_fast_dancer05_10set.json',
+  // 'test8_150frame_fast_dancer06_8set.json',
+  // 'test8_150frame_fast_dancer07_8set.json',
+  // 'test8_150frame_fast_dancer08_8set.json',
+  // 'test8_150frame_fast_dancer09_10set.json',
+  // 'test8_150frame_fast_hofesh01_15set.json',
 
 
   // Label B 文件
@@ -42,19 +42,19 @@ let fileNames = [
   // 'test5_B600frame_glideComR_QuickStrong_20set2.json',
 
   //labe slow files
-  'test8_150frame_slow_circlewalk_14set.json',
-  'test8_150frame_slow_elbow_20set.json',
-  'test8_150frame_slow_finger_17set.json',
-  'test8_150frame_slow_foot_15set.json',
-  'test8_150frame_slow_head_15set.json',
+  // 'test8_150frame_slow_circlewalk_14set.json',
+  // 'test8_150frame_slow_elbow_20set.json',
+  // 'test8_150frame_slow_finger_17set.json',
+  // 'test8_150frame_slow_foot_15set.json',
+  // 'test8_150frame_slow_head_15set.json',
 
 ];
 
 // acceleration feature
 const FPS = 30;
-const expected_frames = 150;    // 每个样本期望的帧数
+const expected_frames = 75;    // 每个样本期望的帧数
 const dt = 1 / FPS;
-const CAPTURE_FRAMES = 5 * FPS; // 例如 20 秒（录制相关代码在此示例中不做修改）
+const CAPTURE_FRAMES = 2.5 * FPS; // 例如 2.5 秒（录制相关代码在此示例中不做修改）
 
 let velocities = [];  // 用于存储速度特征
 
@@ -63,11 +63,30 @@ function preload() {
   // 加载 BlazePose 模型（如果你实时录制视频的话使用）
   bodyPose = ml5.bodyPose("BlazePose");
 
-  // 加载所有 JSON 文件，存入 json_data 数组
-  for (let i = 0; i < fileNames.length; i++) {
-    let path = "data/data_test8_velocity/" + fileNames[i];
-    json_data[i] = loadJSON(path);
+  // 加载第一个文件夹的 index.json
+  let index1 = loadJSON("data/data_test9_velocity_fast/velocity_fast_index.json");
+  let files1 = index1.files;
+  for (let i = 0; i < files1.length; i++) {
+    let path = "data/data_test9_velocity_fast/" + files1[i];
+    json_data.push(loadJSON(path));
+    fileNames.push(files1[i]);
   }
+
+  // // 加载第二个文件夹的 index.json
+  // let index2 = loadJSON("data/data_test9_velocity_slow/velocity_slow_index.json");
+  // let files2 = index2.files;
+  // for (let i = 0; i < files2.length; i++) {
+  //   let path = "data/data_test9_velocity_slow/" + files2[i];
+  //   json_data.push(loadJSON(path));          // 使用 push 追加数据
+  //   fileNames.push(files2[i]);   
+  // }
+
+
+  // // 加载所有 JSON 文件，存入 json_data 数组
+  // for (let i = 0; i < fileNames.length; i++) {
+  //   let path = "data/data_test8_velocity/" + fileNames[i];
+  //   json_data[i] = loadJSON(path);
+  // }
 }
 
 function setup() {
@@ -130,7 +149,8 @@ function computeJointVelocityFeatures(frames) {
   // 对于每个关节
   for (let j = 0; j < numJoints; j++) {
     let jointVelocities = [];
-    //对于每个相邻帧（0 到 frames.length-2）
+  
+  //对于每个相邻帧（0 到 frames.length-2）
     for (let i = 0; i < frames.length-1; i++) {
       let frameVel = {};
       for (let j=0; j<numJoints; j++) {
@@ -153,8 +173,8 @@ function computeJointVelocityFeatures(frames) {
     if (velocityFrames.length > 0) {
       velocityFrames.push({ ...velocityFrames[velocityFrames.length - 1] });
     }    
+    return velocityFrames; 
   }
-  return velocityFrames; 
 }
 
 
