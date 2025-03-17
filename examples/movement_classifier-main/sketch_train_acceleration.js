@@ -30,11 +30,21 @@ let fileNames = [
   // 'test6_sustained_dance03_6set.json',
   // 'test6_sustained_dance03_6set.json',
 
-  'test7_150frame_sustained_palm_15set.json',
-  'test7_150frame_sustained_knee_15set.json',
-  'test7_150frame_sustained_head_15set.json',
-  'test7_150frame_sustained_elbow_15set.json',
+  // 'test7_150frame_sustained_palm_15set.json',
+  // 'test7_150frame_sustained_knee_15set.json',
+  // 'test7_150frame_sustained_head_15set.json',
+  // 'test7_150frame_sustained_elbow_15set.json',
 
+  // sustained move test 8 -  150 data
+  'test8_150frame_sustained_back_15set.json',
+  'test8_150frame_sustained_elbow_21set.json',
+  'test8_150frame_sustained_finger_17set.json',
+  'test8_150frame_sustained_foot_15set.json',
+  'test8_150frame_sustained_head_15set.json',
+  'test8_150frame_sustained_knee_20set.json',
+  'test8_150frame_sustained_kayla_7set.json',
+  'test8_150frame_sustained_walk_20set.json',
+  'test8_150frame_sustained_shoulder_20set.json',
 
 
 
@@ -46,12 +56,21 @@ let fileNames = [
   // 'test6_sudden_dancer01_8set.json',
   // 'test6_sudden_dancer04_11set.json',
 
-  'test7_150frame_sudden_elbow_15set.json',
-  'test7_150frame_sudden_palm_15set.json',
-  'test7_150frame_sudden_jump_15set.json',
-  'test7_150frame_sudden_knee_15set.json',
+  // 'test7_150frame_sudden_elbow_15set.json',
+  // 'test7_150frame_sudden_palm_15set.json',
+  // 'test7_150frame_sudden_jump_15set.json',
+  // 'test7_150frame_sudden_knee_15set.json',
 
-
+  // sudden move test 8 -  139 data
+  'test8_150frame_sudden_dancer01_8set.json',
+  'test8_150frame_sudden_dancer02_10set.json',
+  'test8_150frame_sudden_dancer06_1set.json',
+  'test8_150frame_sudden_elbow_20set.json',
+  'test8_150frame_sudden_hofesh01_10set.json',
+  'test8_150frame_sudden_jump_30set.json',
+  'test8_150frame_sudden_knee_16set.json',
+  'test8_150frame_sudden_palm_23set.json',
+  'test8_150frame_sudden_walk_21set.json',
 
 
 ];
@@ -68,7 +87,7 @@ function preload() {
 
   // 加载所有 JSON 文件，存入 json_data 数组
   for (let i = 0; i < fileNames.length; i++) {
-    let path = "data/data_test7/" + fileNames[i]; // update folder of json file
+    let path = "data/data_test8_acceleration/" + fileNames[i]; // update folder of json file
     json_data[i] = loadJSON(path);
   }
 }

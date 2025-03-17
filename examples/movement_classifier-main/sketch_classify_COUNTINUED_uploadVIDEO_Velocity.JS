@@ -59,9 +59,9 @@ function setup() {
   // 这里不创建实时摄像头 video，由上传的视频创建
   // 加载预训练模型
   modelDetails = {
-    model: "model/Mode_Velocity_test5/model.json",  
-    metadata: "model/Mode_Velocity_test5/model_meta.json",
-    weights: "model/Mode_Velocity_test5/model.weights.bin",
+    model: "model/Mode_Velocity_test8/model.json",  
+    metadata: "model/Mode_Velocity_test8/model_meta.json",
+    weights: "model/Mode_Velocity_test8/model.weights.bin",
   };
   classifier.load(modelDetails, modelLoaded);
 }
