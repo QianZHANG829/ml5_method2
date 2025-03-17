@@ -34,6 +34,8 @@ let fileNames = [
   // 'test8_150frame_fast_dancer09_10set.json',
   // 'test8_150frame_fast_hofesh01_15set.json',
 
+  // fast
+  'test9_75frame_fast_hofesh01_15set_chunk25.json',
 
   // Label B 文件
   // 'test5_B600frame_glideComR_QuickStrong_10set3.json', //sudden/strong
@@ -47,6 +49,10 @@ let fileNames = [
   // 'test8_150frame_slow_finger_17set.json',
   // 'test8_150frame_slow_foot_15set.json',
   // 'test8_150frame_slow_head_15set.json',
+
+  // slow
+  'test9_75frame_slow_walk_21set_chunk42.json',
+  
 
 ];
 
@@ -63,14 +69,14 @@ function preload() {
   // 加载 BlazePose 模型（如果你实时录制视频的话使用）
   bodyPose = ml5.bodyPose("BlazePose");
 
-  // 加载第一个文件夹的 index.json
-  let index1 = loadJSON("data/data_test9_velocity_fast/velocity_fast_index.json");
-  let files1 = index1.files;
-  for (let i = 0; i < files1.length; i++) {
-    let path = "data/data_test9_velocity_fast/" + files1[i];
-    json_data.push(loadJSON(path));
-    fileNames.push(files1[i]);
-  }
+  // // 加载第一个文件夹的 index.json
+  // let index1 = loadJSON("data/velocity_fast_index.json");
+  // let files1 = index1.files;
+  // for (let i = 0; i < files1.length; i++) {
+  //   let path = "data/data_test9_velocity_fast/" + files1[i];
+  //   json_data.push(loadJSON(path));
+  //   fileNames.push(files1[i]);
+  // }
 
   // // 加载第二个文件夹的 index.json
   // let index2 = loadJSON("data/data_test9_velocity_slow/velocity_slow_index.json");
@@ -82,11 +88,11 @@ function preload() {
   // }
 
 
-  // // 加载所有 JSON 文件，存入 json_data 数组
-  // for (let i = 0; i < fileNames.length; i++) {
-  //   let path = "data/data_test8_velocity/" + fileNames[i];
-  //   json_data[i] = loadJSON(path);
-  // }
+  // 加载所有 JSON 文件，存入 json_data 数组
+  for (let i = 0; i < fileNames.length; i++) {
+    let path = "data/data_test9_velocity_fast/" + fileNames[i];
+    json_data[i] = loadJSON(path);
+  }
 }
 
 function setup() {

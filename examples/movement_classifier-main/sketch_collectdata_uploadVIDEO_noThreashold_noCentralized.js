@@ -18,12 +18,12 @@ let fileInput;
 let playButton, videoSlider;
 let controlBar;         // 控制条容器
 
-// 视频宽高（默认值），后续根据上传视频调整
+// 视频宽高（默认值）
 let vidWidth = 1920;
 let vidHeight = 1080;
 
 const FPS = 30;
-const CAPTURE_FRAMES = 5 * FPS; // 5秒 x 30帧
+const CAPTURE_FRAMES = 2 * FPS; // 2秒 x 30帧
 
 // 全局输入名称数组（33 个关键点，每个有 x 和 y，共66个输入）
 let inputNames = [];
@@ -130,25 +130,26 @@ function draw() {
   background(0);
   // 绘制视频图像
   if (video) {
-    //image(video, 0, 0, width, height);
+    // 获取视频原始尺寸
+    let originalWidth = video.elt.videoWidth;
+    let originalHeight = video.elt.videoHeight;
+    // 计算统一的缩放因子，使视频在保持比例的前提下尽可能填满画布
+    let scaleFactor = min(vidWidth / originalWidth, vidHeight / originalHeight);
+    let scaledWidth = originalWidth * scaleFactor;
+    let scaledHeight = originalHeight * scaleFactor;
+    // 计算偏移量，将视频居中显示
+    let xOffset = (vidWidth - scaledWidth) / 2;
+    let yOffset = (vidHeight - scaledHeight) / 2;
     
-    // 使用 video.elt.videoWidth / video.elt.videoHeight 获取原始视频尺寸
-    let videoWidth = video.elt.videoWidth;
-    let videoHeight = video.elt.videoHeight;
-    // 计算将视频置于画布中央的偏移量
-    let xOffset = (width - videoWidth) / 2;
-    let yOffset = (height - videoHeight) / 2;
-    // 将视频绘制在画布中间，不进行缩放
-    image(video, xOffset, yOffset, videoWidth, videoHeight);
-
+    // 绘制视频，不进行拉伸
+    image(video, xOffset, yOffset, scaledWidth, scaledHeight);
   
     // 自动更新进度条，使其跟随视频播放
     if (video && videoSlider && video.time && video.duration) {
       videoSlider.value(video.time());
     }
   
-    
-    // 绘制检测到的关键点和骨架连线（添加偏移量）
+    // 绘制检测到的关键点和骨架连线（按照相同的缩放比例与偏移量）
     for (let i = 0; i < poses.length; i++) {
       let pose = poses[i];
       
@@ -159,7 +160,8 @@ function draw() {
         if (pointA.confidence > 0.1 && pointB.confidence > 0.1) {
           stroke(255, 0, 0);
           strokeWeight(2);
-          line(pointA.x + xOffset, pointA.y + yOffset, pointB.x + xOffset, pointB.y + yOffset);
+          line(pointA.x * scaleFactor + xOffset, pointA.y * scaleFactor + yOffset,
+               pointB.x * scaleFactor + xOffset, pointB.y * scaleFactor + yOffset);
         }
       }
       
@@ -169,11 +171,11 @@ function draw() {
         if (keypoint.confidence < 0.3) {
           fill(0, 0, 255);  // 低置信度用蓝色
           noStroke();
-          circle(keypoint.x + xOffset, keypoint.y + yOffset, 12);
+          circle(keypoint.x * scaleFactor + xOffset, keypoint.y * scaleFactor + yOffset, 12);
         } else {
           fill(0, 255, 0);  // 高置信度用绿色
           noStroke();
-          circle(keypoint.x + xOffset, keypoint.y + yOffset, 10);
+          circle(keypoint.x * scaleFactor + xOffset, keypoint.y * scaleFactor + yOffset, 10);
         }
       }
     }
