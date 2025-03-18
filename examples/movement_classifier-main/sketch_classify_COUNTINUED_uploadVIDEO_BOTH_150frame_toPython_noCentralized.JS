@@ -19,15 +19,15 @@ let classifierAcceleration;
 
 // 模型文件信息（请根据实际情况修改文件路径）
 let velocityModelDetails = {
-  model: "model/Model_Velocity_test8/model.json",  
-  metadata: "model/Model_Velocity_test8/model_meta.json",
-  weights: "model/Model_Velocity_test8/model.weights.bin",
+  model: "model/Model_Velocity_test9/model.json",  
+  metadata: "model/Model_Velocity_test9/model_meta.json",
+  weights: "model/Model_Velocity_test9/model.weights.bin",
 };
 
 let accelerationModelDetails = {
-  model: "model/Model_Acceleration_test8/model.json",  
-  metadata: "model/Model_Acceleration_test8/model_meta.json",
-  weights: "model/Model_Acceleration_test8/model.weights.bin",
+  model: "model/Model_Acceleration_test9/model.json",  
+  metadata: "model/Model_Acceleration_test9/model_meta.json",
+  weights: "model/Model_Acceleration_test9/model.weights.bin",
 };
 
 // 用于连续预测的滑动窗口
@@ -36,7 +36,7 @@ let frameCount = 0;
 
 // 参数设置
 const FPS = 30;
-const CAPTURE_FRAMES = 5 * FPS; // 5 秒, 150 帧
+const CAPTURE_FRAMES = 2 * FPS; // 2 秒, 600 帧
 const dt = 1 / FPS;
 
 // 检测状态（通过按 d 键启动/停止）
@@ -250,7 +250,7 @@ function predictPose() {
     
     frameCount++;
     
-    // 每秒（大约每 30 帧）进行一次预测（确保采集满 150 帧）
+    // 每秒（大约每 30 帧）进行一次预测（确保采集满 xx 帧）
     if (frameCount % FPS === 0) {
       // 若帧数不足，则用最后一帧补全
       if (sequence.length < CAPTURE_FRAMES) {
