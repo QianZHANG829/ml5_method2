@@ -20,6 +20,7 @@ let frameCount = 0;
 // JSON 数据数组，每个元素对应一个文件
 let json_data = [];
 let fileNames = [
+
   // Label A 文件 - sustained
   // 'test4_A600frame_glideComR_10set1.json', //sustained/light
   // 'test4_A600frame_glideComR_10set2.json',
@@ -37,15 +38,40 @@ let fileNames = [
 
   // sustained move test 8 -  135 data
   //'test8_150frame_sustained_back_15set.json',
-  'test8_150frame_sustained_elbow_21set.json',
-  'test8_150frame_sustained_finger_17set.json',
-  'test8_150frame_sustained_foot_15set.json',
-  'test8_150frame_sustained_head_15set.json',
-  'test8_150frame_sustained_knee_20set.json',
-  'test8_150frame_sustained_kayla_7set.json',
-  'test8_150frame_sustained_walk_20set.json',
-  'test8_150frame_sustained_shoulder_20set.json',
+  // 'test8_150frame_sustained_elbow_21set.json',
+  // 'test8_150frame_sustained_finger_17set.json',
+  // 'test8_150frame_sustained_foot_15set.json',
+  // 'test8_150frame_sustained_head_15set.json',
+  // 'test8_150frame_sustained_knee_20set.json',
+  // 'test8_150frame_sustained_kayla_7set.json',
+  // 'test8_150frame_sustained_walk_20set.json',
+  // 'test8_150frame_sustained_shoulder_20set.json',
 
+  "test9_60frame_sustained_hip_22set.json",
+  "test9_60frame_sustained_nose_25set.json",
+  "test9_60frame_sustained_walk_20set.json",
+  "test9_60frame_sudden_walk_18set.json",
+  "test9_60frame_sustained_head_28set.json",
+  "test9_60frame_sudden_elbow_17set.json",
+  "test9_60frame_sudden_dancer06_7set.json",
+  "test9_60frame_sudden_jump_24set.json",
+  "test9_60frame_sustained_knee_23set.json",
+  "test9_60frame_sustained_foot_20set.json",
+
+  // sudden
+  "test9_60frame_sudden_dancer02_21set.json",
+  "test9_60frame_sudden_dancer03_6set.json",
+  "test9_60frame_sudden_dancer08_10set.json",
+  "test9_60frame_sudden_dancer01_22set.json",
+  "test9_60frame_sustained_palm_21set.json",
+  "test9_60frame_sustained_elbow_26set.json",
+  "test9_60frame_sudden_dancer09_15set.json",
+  "test9_60frame_sustained_dancer03_10set.json",
+  "test9_60frame_sustained_dancer03_11set.json",
+  "test9_60frame_sustained_shoulder_24set.json",
+  "test9_60frame_sudden_hofesh01_30set.json",
+  "test9_60frame_sudden_knee_20set.json",
+  "test9_60frame_sudden_palm_34set.json"
 
 
   // Label B 文件
@@ -62,37 +88,43 @@ let fileNames = [
   // 'test7_150frame_sudden_knee_15set.json',
 
   // sudden move test 8 -  139 data
-  'test8_150frame_sudden_dancer01_8set.json',
-  'test8_150frame_sudden_dancer02_10set.json',
-  'test8_150frame_sudden_dancer06_1set.json',
-  'test8_150frame_sudden_elbow_20set.json',
-  'test8_150frame_sudden_hofesh01_10set.json',
-  'test8_150frame_sudden_jump_30set.json',
-  'test8_150frame_sudden_knee_16set.json',
-  'test8_150frame_sudden_palm_23set.json',
-  'test8_150frame_sudden_walk_21set.json',
+  // 'test8_150frame_sudden_dancer01_8set.json',
+  // 'test8_150frame_sudden_dancer02_10set.json',
+  // 'test8_150frame_sudden_dancer06_1set.json',
+  // 'test8_150frame_sudden_elbow_20set.json',
+  // 'test8_150frame_sudden_hofesh01_10set.json',
+  // 'test8_150frame_sudden_jump_30set.json',
+  // 'test8_150frame_sudden_knee_16set.json',
+  // 'test8_150frame_sudden_palm_23set.json',
+  // 'test8_150frame_sudden_walk_21set.json',
 
+  // sudden
+  // 'test9_60frame_sudden_dancer01_22set.json',
+  // 'test9_60frame_sudden_dancer02_21set.json',
+  // 'test9_60frame_sudden_dancer03_6set.json',
 
 ];
 
 // acceleration feature
 const FPS = 30;
-const expected_frames = 150;    // 每个样本期望的帧数
+const expected_frames = 60;    // 每个样本期望的帧数
 const dt = 1 / FPS;
-const CAPTURE_FRAMES = 5 * FPS; // 例如 5 秒（录制相关代码在此示例中不做修改）
+const CAPTURE_FRAMES = 2 * FPS; // 例如 2 秒（录制相关代码在此示例中不做修改）
 
 function preload() {
   // 加载 BlazePose 模型（如果你实时录制视频的话使用）
   bodyPose = ml5.bodyPose("BlazePose");
 
+
   // 加载所有 JSON 文件，存入 json_data 数组
   for (let i = 0; i < fileNames.length; i++) {
-    let path = "data/data_test8_acceleration/" + fileNames[i]; // update folder of json file
+    let path = "data/data_test9_acceleration/" + fileNames[i]; // update folder of json file
     json_data[i] = loadJSON(path);
   }
 }
 
 function setup() {
+
   createCanvas(640, 480);
   video = createCapture(VIDEO);
   video.size(640, 480);
@@ -116,7 +148,7 @@ function setup() {
     dataMode: "spatial",  // spatial 模式下每个样本的 xs 是一个对象
     inputs: inputNames,
     outputs: ["label"],
-    learningRate: 0.0002,
+    learningRate: 0.002,
     debug: true,
   };
   classifier = ml5.timeSeries(options);
@@ -263,7 +295,7 @@ function keyPressed() {
   // 按 T 键开始训练
   if (key === 't' || key === 'T') {
     classifier.normalizeData();
-    classifier.train({ epochs: 350, validationSplit:0.1, shuffle:true }, finishedTraining);
+    classifier.train({ epochs: 150, validationSplit:0.15, shuffle:false }, finishedTraining);
   }
 }
 
