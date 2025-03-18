@@ -1,6 +1,9 @@
 // ─────────────────────────────────────────────
 // 使用上传视频、计算 velocity 和 acceleration 特征进行动作分类预测
-// ─────────────────────────────────────────────
+// ─────────────
+// 视频宽高（默认值）
+let vidWidth = 1920;
+let vidHeight = 1080;
 
 // 全局变量
 let video;
@@ -36,7 +39,7 @@ let frameCount = 0;
 
 // 参数设置
 const FPS = 30;
-const CAPTURE_FRAMES = 2 * FPS; // 2 秒, 600 帧
+const CAPTURE_FRAMES = 2 * FPS; // 2 秒
 const dt = 1 / FPS;
 
 // 检测状态（通过按 d 键启动/停止）
@@ -44,6 +47,8 @@ let detecting = false;
 
 // 文件上传按钮
 let fileInput;
+let playButton, videoSlider;
+let controlBar;         // 控制条容器
 
 function preload() {
   // 加载 BlazePose 模型
@@ -60,7 +65,11 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(640, 480);
+  // 创建画布
+  createCanvas(vidWidth, vidHeight);
+
+  // 创建空的控制条容器（后面会在 videoLoaded 中设置样式和位置）
+  controlBar = createDiv();
 
   // 创建文件上传按钮（仅接受视频文件）
   fileInput = createFileInput(handleFile);
@@ -89,13 +98,39 @@ function handleFile(file) {
 }
 
 function videoLoaded() {
-  // 根据视频原始宽高调整画布
-  resizeCanvas(video.width, video.height);
+  // // 根据视频原始宽高调整画布
+  // resizeCanvas(video.width, video.height);
 
   video.loop();
   // 开始对上传的视频进行关键点检测
   bodyPose.detectStart(video, gotPoses);
   connections = bodyPose.getSkeleton();
+
+  // 设置控制条容器样式与位置（视频下方）
+  controlBar.size(vidWidth, 40);
+  controlBar.style("background-color", "#ddd");
+  controlBar.position(0, vidHeight + 150);
+  controlBar.style("display", "flex");
+  controlBar.style("align-items", "center");
+  controlBar.style("padding", "0 10px");
+  
+  // 创建进度条（滑块），视频加载后获取 video.duration() 作为最大值
+  videoSlider = createSlider(0, video.duration(), 0, 0.01);
+  videoSlider.parent(controlBar);
+  videoSlider.style("flex-grow", "1");
+  
+  // 当用户拖动滑块时，更新视频当前时间
+  videoSlider.input(() => {
+    let t = videoSlider.value();
+    video.time(t);
+  });
+  
+  // 创建播放/暂停按钮
+  playButton = createButton("Play/Pause");
+  playButton.parent(controlBar);
+  playButton.style("margin-left", "10px");
+  playButton.mousePressed(togglePlay);
+
 }
 
 function modelReady() {
@@ -103,36 +138,57 @@ function modelReady() {
 }
 
 function draw() {
+  // 填充黑色背景
+  background(0);
   // 绘制视频图像
   if (video) {
-    image(video, 0, 0, width, height);
-  }
-
-  // 绘制检测到的骨架连线和关键点
-  for (let i = 0; i < poses.length; i++) {
-    let pose = poses[i];
-
-    // 绘制骨架连线
-    for (let j = 0; j < connections.length; j++) {
-      let pointA = pose.keypoints[connections[j][0]];
-      let pointB = pose.keypoints[connections[j][1]];
-      if (pointA.confidence > 0.1 && pointB.confidence > 0.1) {
-        stroke(255, 0, 0);
-        strokeWeight(2);
-        line(pointA.x, pointA.y, pointB.x, pointB.y);
-      }
+    // 获取视频原始尺寸
+    let originalWidth = video.elt.videoWidth;
+    let originalHeight = video.elt.videoHeight;
+    // 计算统一的缩放因子，使视频在保持比例的前提下尽可能填满画布
+    let scaleFactor = min(vidWidth / originalWidth, vidHeight / originalHeight);
+    let scaledWidth = originalWidth * scaleFactor;
+    let scaledHeight = originalHeight * scaleFactor;
+    // 计算偏移量，将视频居中显示
+    let xOffset = (vidWidth - scaledWidth) / 2;
+    let yOffset = (vidHeight - scaledHeight) / 2;
+    
+    // 绘制视频，不进行拉伸
+    image(video, xOffset, yOffset, scaledWidth, scaledHeight);
+  
+    // 自动更新进度条，使其跟随视频播放
+    if (video && videoSlider && video.time && video.duration) {
+      videoSlider.value(video.time());
     }
-    // 绘制关键点
-    for (let j = 0; j < pose.keypoints.length; j++) {
-      let keypoint = pose.keypoints[j];
-      if (keypoint.confidence < 0.3) {
-        fill(0, 0, 255); // 低置信度：蓝色
-        noStroke();
-        circle(keypoint.x, keypoint.y, 12);
-      } else {
-        fill(0, 255, 0); // 高置信度：绿色
-        noStroke();
-        circle(keypoint.x, keypoint.y, 10);
+  
+    // 绘制检测到的关键点和骨架连线（按照相同的缩放比例与偏移量）
+    for (let i = 0; i < poses.length; i++) {
+      let pose = poses[i];
+      
+      // 绘制骨架连线
+      for (let j = 0; j < connections.length; j++) {
+        let pointA = pose.keypoints[connections[j][0]];
+        let pointB = pose.keypoints[connections[j][1]];
+        if (pointA.confidence > 0.1 && pointB.confidence > 0.1) {
+          stroke(255, 0, 0);
+          strokeWeight(2);
+          line(pointA.x * scaleFactor + xOffset, pointA.y * scaleFactor + yOffset,
+               pointB.x * scaleFactor + xOffset, pointB.y * scaleFactor + yOffset);
+        }
+      }
+      
+      // 绘制关键点
+      for (let j = 0; j < pose.keypoints.length; j++) {
+        let keypoint = pose.keypoints[j];
+        if (keypoint.confidence < 0.3) {
+          fill(0, 0, 255);  // 低置信度用蓝色
+          noStroke();
+          circle(keypoint.x * scaleFactor + xOffset, keypoint.y * scaleFactor + yOffset, 12);
+        } else {
+          fill(0, 255, 0);  // 高置信度用绿色
+          noStroke();
+          circle(keypoint.x * scaleFactor + xOffset, keypoint.y * scaleFactor + yOffset, 10);
+        }
       }
     }
   }
@@ -152,12 +208,27 @@ function draw() {
 
   // 在屏幕中央显示预测结果
   noStroke();
-  textSize(52);
-  fill(255, 0, 255);
-  textAlign(LEFT, CENTER);
-  text(`Velocity: ${poseLabelVelocity}`, width / 16, height / 4);
-  text(`Acceleration: ${poseLabelAcceleration}`, width / 16, height / 4 + 50);
+  textSize(40);
+  textAlign(CENTER, CENTER);
+
+  if (poseLabelVelocity.includes("Fast")) {
+    fill(0, 255, 0); // 若预测标签为 "Sudden"，则显示为绿色
+  } else {
+    fill(255, 0, 255); // 其他情况（如 Sustained）维持原有颜色
+  }
+  text(`Velocity: ${poseLabelVelocity}`, width / 4, height / 4);
+
+
+
+  if (poseLabelAcceleration.includes("Sudden")) {
+    fill(0, 255, 0); // 若预测标签为 "Sudden"，则显示为绿色
+  } else {
+    fill(255, 0, 255); // 其他情况（如 Sustained）维持原有颜色
+  }
+  text(`Acceleration: ${poseLabelAcceleration}`, width / 4, height / 4 + 50);
+
 }
+
 
 function gotPoses(results) {
   poses = results;
@@ -346,4 +417,15 @@ function startDetection() {
     detecting = true;
     predictPose();
   }, 2000);
+}
+
+// 播放/暂停控制
+function togglePlay() {
+  if (video && video.elt) {
+    if (!video.elt.paused) {
+      video.pause();
+    } else {
+      video.play();
+    }
+  }
 }
