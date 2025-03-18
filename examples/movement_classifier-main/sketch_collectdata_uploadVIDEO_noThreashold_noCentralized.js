@@ -269,7 +269,7 @@ function startCollection(label) {
     collectingLabel = label;
     sequence = [];
     frameCount = 0;
-  }, 1000);
+  }, 100);
 }
 
 function finishedTraining() {
