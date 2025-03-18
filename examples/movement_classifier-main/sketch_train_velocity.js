@@ -34,8 +34,30 @@ let fileNames = [
   // 'test8_150frame_fast_dancer09_10set.json',
   // 'test8_150frame_fast_hofesh01_15set.json',
 
-  // fast
-  'test9_75frame_fast_hofesh01_15set_chunk25.json',
+  // slow -150
+  "test9_60frame_slow_head_28set.json",
+  "test9_60frame_slow_dancer15_31set.json",
+  "test9_60frame_slow_knee_23set.json",
+  "test9_60frame_slow_walk_20set.json",
+  "test9_60frame_slow_dancer02_10set.json",
+  "test9_60frame_slow_palm_21set.json",
+  "test9_60frame_slow_dancer01_8set.json",
+  "test9_60frame_slow_dancer03_10set.json",
+  "test9_60frame_slow_slow_dancer03_11set.json",
+
+
+
+  // fast -151
+  "test9_60frame_fast_dancer01_8set.json",
+  "test9_60frame_fast_dancer06_12set.json",
+  "test9_60frame_fast_palm_34set.json",
+  "test9_60frame_fast_dancer09_12set.json",
+  "test9_60frame_fast_dancer11_14set.json",
+  "test9_60frame_fast_dancer08_5set.json",
+  "test9_60frame_fast_jump_24set.json",
+  "test9_60frame_fast_elbow_17set.json",
+  "test9_60frame_fast_dancer03_9set.json",
+  "test9_60frame_fast_hofesh01_30set.json"
 
   // Label B 文件
   // 'test5_B600frame_glideComR_QuickStrong_10set3.json', //sudden/strong
@@ -50,17 +72,15 @@ let fileNames = [
   // 'test8_150frame_slow_foot_15set.json',
   // 'test8_150frame_slow_head_15set.json',
 
-  // slow
-  'test9_75frame_slow_walk_21set_chunk42.json',
-  
+    
 
 ];
 
 // acceleration feature
 const FPS = 30;
-const expected_frames = 75;    // 每个样本期望的帧数
+const expected_frames = 60;    // 每个样本期望的帧数
 const dt = 1 / FPS;
-const CAPTURE_FRAMES = 2.5 * FPS; // 例如 2.5 秒（录制相关代码在此示例中不做修改）
+const CAPTURE_FRAMES = 2 * FPS; // 例如 2 秒（录制相关代码在此示例中不做修改）
 
 let velocities = [];  // 用于存储速度特征
 
@@ -90,7 +110,7 @@ function preload() {
 
   // 加载所有 JSON 文件，存入 json_data 数组
   for (let i = 0; i < fileNames.length; i++) {
-    let path = "data/data_test9_velocity_fast/" + fileNames[i];
+    let path = "data/data_test9_velocity/" + fileNames[i];
     json_data[i] = loadJSON(path);
   }
 }
@@ -119,7 +139,7 @@ function setup() {
     dataMode: "spatial",  // spatial 模式下每个样本的 xs 是一个对象
     inputs: inputNames,
     outputs: ["label"],
-    learningRate: 0.0002,
+    learningRate: 0.001,
     debug: true,
   };
   classifier = ml5.timeSeries(options);
@@ -152,10 +172,7 @@ function computeJointVelocityFeatures(frames) {
   let numJoints = 33;
   let velocityFrames = [];
 
-  // 对于每个关节
-  for (let j = 0; j < numJoints; j++) {
-    let jointVelocities = [];
-  
+
   //对于每个相邻帧（0 到 frames.length-2）
     for (let i = 0; i < frames.length-1; i++) {
       let frameVel = {};
@@ -174,14 +191,12 @@ function computeJointVelocityFeatures(frames) {
       }
       velocityFrames.push(frameVel);    
     }
-  
     // 如果原来有 N-1 个速度值，为了让长度达到 N，复制最后一个速度值
     if (velocityFrames.length > 0) {
       velocityFrames.push({ ...velocityFrames[velocityFrames.length - 1] });
     }    
     return velocityFrames; 
   }
-}
 
 
 // 从 JSON 文件数据中提取所有样本的速度特征
@@ -192,7 +207,7 @@ function loadSamplesFromData(fileData, filename) {
       let sample = fileData.data[j];
       let frames = sample.xs; // 原始帧数据（包含 x, y 坐标）
       let velFeatures = computeJointVelocityFeatures(frames);
-      if (!velFeatures || velFeatures.length < 33*(expected_frames - 1)) {
+      if (!velFeatures || velFeatures.length < expected_frames) {
         console.warn(`Warning: In file ${filename}, sample ${j} has less than ${expected_frames} frames (velocity features).`);
       } else {
         samplesFeatures.push(velFeatures.slice(0, expected_frames));
@@ -242,7 +257,7 @@ function keyPressed() {
   // 按 T 键开始训练
   if (key === 't' || key === 'T') {
     classifier.normalizeData();
-    classifier.train({ epochs: 100 }, finishedTraining);
+    classifier.train({ epochs: 250, validationSplit:0.1, shuffle:false }, finishedTraining);
   }
 }
 
