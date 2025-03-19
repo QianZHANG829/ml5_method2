@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from send_midi import send_midi
+import send_midi
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
