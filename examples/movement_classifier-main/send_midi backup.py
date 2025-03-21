@@ -59,6 +59,7 @@ def send_midi(data_type, label, displayConfidence):
             adjust_tempo(new_tempo)
             print(f"Received velocity: type={data_type}, label={label}, 设置 tempo 为 {new_tempo}")
     # 根据 acceleration 数据也可以加入类似处理逻辑
+    
 
 @socketio.on("midiData")
 def handle_midi_data(data):
