@@ -496,7 +496,7 @@ class NeuralNetworkData {
         const dataAsArray = Array(dataRaw).flatMap((item) =>
           item.map((obj) => obj[k])
         );
-        console.log(dataAsArray);
+        //console.log(dataAsArray);
         predict_normalized[k] = this.normalizeArray(dataAsArray, options);
       }
     });

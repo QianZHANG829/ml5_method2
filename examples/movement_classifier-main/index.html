@@ -3,17 +3,28 @@
   <meta charset="UTF-8" />
   <title>TimeSeries + bodyPose Example</title>
 
-  <!-- <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
   <script>
+    // 建立连接到服务器
     const socket = io('http://127.0.0.1:5000');
-    socket.on('response', function(data) {
-      console.log('服务器反馈:', data);
-    });
-    // 假设你有一个函数来实时获取 confidence 数据：
-    function sendAcceleration(confidence) {
-      socket.emit('acceleration', { confidence: confidence });
-    }
-  </script> -->
+  
+      socket.on('connect', () => {
+        console.log('Socket 连接成功! Socket ID:', socket.id);
+      });
+      
+      socket.on('disconnect', () => {
+        console.log('Socket 已断开连接');
+      });
+      
+      socket.on('connect_error', (error) => {
+        console.error('Socket 连接错误:', error);
+      });
+      
+      socket.on('response', (data) => {
+        console.log('服务器反馈:', data);
+      });
+  </script>
   
   <!-- p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
@@ -32,7 +43,6 @@
 
   <!-- <script src="sketch_collectdata_uploadVIDEO.js"></script> -->
   <!-- <script src="sketch_collectdata_uploadVIDEO_noThreashold.js"></script> -->
-写·
 
   <!-- <script src="sketch_collectdata_uploadVIDEO_kalfman.js"></script> -->
 
@@ -50,19 +60,19 @@
   <!-- <script src="sketch_classify_CONTINUED.js"></script> -->
 
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_velocity.js"></script> -->
-  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame.JS"></script> -->
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame.js"></script> -->
   
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_600frame.js"></script> -->
 
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Both.js"></script> -->
   
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Both_150frame.js"></script> -->
-  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame_toPython.JS"></script> -->
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame_toPython.js"></script> -->
 
-  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame_toPython_noCentralized.JS"></script> -->
-  <script src="sketch_classify_COUNTINUED_uploadVIDEO_BOTH_150frame_toPython_noCentralized.JS"></script>
-
-
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame_toPython_noCentralized.js"></script> -->
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_BOTH_150frame_toPython_noCentralized.js"></script> -->
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_BOTH_150frame_toPython_noCentralized_camera.js"></script> -->
+  <script src="sketch_classify_COUNTINUED_uploadVIDEO_BOTH_60frame_toPython_noCentralized_camera_copy.js"></script>
 
 
 </head>
