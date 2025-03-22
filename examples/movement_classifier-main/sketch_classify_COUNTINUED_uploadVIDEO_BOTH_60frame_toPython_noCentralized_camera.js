@@ -339,12 +339,12 @@ function gotResultsAcceleration(results) {
 
   poseLabelAcceleration = `${poseLabelAcceleration} (${displayConfidence.toFixed(2)})`;
 
-  // 发送 acceleration 数据到服务器
-  socket.emit("midiData", {
-    type: "acceleration",
-    label: poseLabelAcceleration,
-    displayConfidence: displayConfidence
-  });
+  // // 发送 acceleration 数据到服务器
+  // socket.emit("midiData", {
+  //   type: "acceleration",
+  //   label: poseLabelAcceleration,
+  //   displayConfidence: displayConfidence
+  // });
 }
 
 
