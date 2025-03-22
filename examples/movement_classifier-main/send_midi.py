@@ -125,4 +125,4 @@ if __name__ == '__main__':
     sender_thread.daemon = True
     sender_thread.start()
     
-    socketio.run(app, port=5000)
+    socketio.run(app, port=2000)
