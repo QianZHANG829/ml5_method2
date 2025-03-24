@@ -16,6 +16,7 @@ let frameCount = 0;
 // load data from json file , use loadJSON() function instead of loadData();
 let json_data = [];
 let fileNames = [
+<<<<<<< Updated upstream
    //60 sad
   // "test10_450frame_sad_bye02_27set.json", // issue
   // "test10_450frame_sad_bye01_18set.json", //issue
@@ -35,13 +36,31 @@ let fileNames = [
   // "test10_450frame_freedom_dancer11_10set.json", // issue
   "test10_450frame_freedom_mak_8set.json"
 
+=======
+  "test10_450frame_freedom_dancer11_10set.json",
+  "test10_450frame_sad_bye02_6set.json",
+  "test10_450frame_conflict_hofesh_rave_8set.json",
+  "test10_450frame_conflict_sarah_bigmouth_6set.json",
+  "test10_450frame_sad_bye02_27set.json",
+  "test10_450frame_freedom_smoke_20set.json",
+  "test10_450frame_freedom_bye01_20set.json",
+  "test10_450frame_sad_bye01_18set.json",
+  "test10_450frame_conflict_bo_bigmouth_14set.json",
+  "test10_450frame_conflict_hofesh_21set.json",
+  "test10_450frame_freedom_mak_8set.json",
+  "test10_450frame_conflict_fullmoon_6set.json"
+>>>>>>> Stashed changes
 ];
 
 // 如果你希望将所有样本合并到一个数组，可以 use testData later.
 // let testData = []; // Not needed in this version.
 
 const FPS = 30;
+<<<<<<< Updated upstream
 const CAPTURE_FRAMES = 15 * FPS; // 15秒 x 30帧
+=======
+const CAPTURE_FRAMES = 15 * FPS; // 20秒 x 30帧
+>>>>>>> Stashed changes
 
 // 声明一个全局的输入名称数组（33 个关键点，每个关键点对应 x 和 y，共 66 个输入）
 let inputNames = [];

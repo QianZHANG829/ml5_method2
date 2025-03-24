@@ -316,7 +316,11 @@ class timeSeries {
             filters: 16,
             kernelSize: 3,
             activation: "relu",
+<<<<<<< Updated upstream
             // inputShape: this.neuralNetworkData.meta.seriesShape, 
+=======
+            //inputShape: this.neuralNetworkData.meta.seriesShape,
+>>>>>>> Stashed changes
           },
           {
             type: "maxPooling1d",

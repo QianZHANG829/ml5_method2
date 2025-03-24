@@ -429,10 +429,12 @@ class NeuralNetworkData {
       let zipped = [];
 
       // zip arrays before reshaping
-      for (let idx = 0; idx < seriesStep * feature_length * batch; idx++) {
+      // for (let idx = 0; idx < seriesStep * feature_length * batch; idx++) {
+        for (let idx = 0; idx < seriesStep * batch; idx++) {
         features.forEach((k) => {
           zipped.push(normalized[k][idx]);
         });
+        
       }
 
       // reshaping
