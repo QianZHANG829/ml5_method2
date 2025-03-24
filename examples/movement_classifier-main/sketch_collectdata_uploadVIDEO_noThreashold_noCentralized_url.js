@@ -3,6 +3,9 @@ let video;
 let bodyPose;
 let poses = [];         // 存储检测到的所有人的关键点
 let connections;        // 用于绘制骨架连线的索引
+let urlInput;
+let loadButton;
+
 
 // ml5.timeSeries 模型
 let classifier;
@@ -23,7 +26,7 @@ let vidWidth = 1920;
 let vidHeight = 1080;
 
 const FPS = 30;
-const CAPTURE_FRAMES = 15 * FPS; // 2秒 x 30帧
+const CAPTURE_FRAMES = 2 * FPS; // 2秒 x 30帧
 
 // 全局输入名称数组（33 个关键点，每个有 x 和 y，共66个输入）
 let inputNames = [];
@@ -39,6 +42,16 @@ function preload() {
 function setup() {
   // 创建画布
   createCanvas(vidWidth, vidHeight);
+
+  // 创建一个文本输入框让用户输入视频链接
+  urlInput = createInput();
+  urlInput.position(10, (windowHeight - urlInput.elt.clientHeight) / 2+ 90);
+
+  // 创建加载视频的按钮
+  loadButton = createButton("加载视频");
+  loadButton.position(10, urlInput.y+50);
+  loadButton.mousePressed(loadVideoFromURL);
+
   
   // 创建文件上传按钮
   fileInput = createFileInput(handleFile);
@@ -240,15 +253,17 @@ function keyPressed() {
     classifier.saveData();
     console.log("Saved data to JSON.");
   }
-  else if (key === 'c' || key === 'C') {
-    startCollection("Conflict & Tension");
+  else if (key === 'a' || key === 'A') {
+    startCollection("Sustained");
   }
-  else if (key === 's' || key === 'S') {
-    startCollection("Sad & Inner Struggle");
+  else if (key === 'b' || key === 'B') {
+    startCollection("Sudden");
   }
   else if (key === 'f' || key === 'F') {
-    startCollection("Freedom & Liberation");
-  
+    startCollection("Fast");
+  }
+  else if (key === 's' || key === 'S') {
+    startCollection("Slow");
   }
   else if (key === 't' || key === 'T') {
     classifier.saveData();
@@ -283,5 +298,17 @@ function togglePlay() {
     } else {
       video.play();
     }
+  }
+}
+
+function loadVideoFromURL() {
+  let url = urlInput.value().trim();
+  if (url) {
+    // 使用输入的链接创建视频对象，并调用 videoLoaded 回调函数
+    video = createVideo([url], videoLoaded);
+    video.hide(); // 隐藏默认的 video DOM 元素
+    console.log("尝试加载视频链接: " + url);
+  } else {
+    console.log("请输入有效的视频链接");
   }
 }

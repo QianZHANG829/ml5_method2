@@ -3,10 +3,10 @@
   <meta charset="UTF-8" />
   <title>TimeSeries + bodyPose Example</title>
 
-  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+<!-- <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> -->
 
-  <script>
-    // 建立连接到服务器
+  <!-- <script> -->
+    <!-- // 建立连接到服务器
     const socket = io('http://127.0.0.1:5000');
   
       socket.on('connect', () => {
@@ -23,8 +23,8 @@
       
       socket.on('response', (data) => {
         console.log('服务器反馈:', data);
-      });
-  </script>
+      }); -->
+  <!-- </script> -->
   
   <!-- p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
@@ -33,7 +33,7 @@
   <script src="../../dist/ml5.js"></script>
 
   <!-- 引用kalman-filter -->
-  <script src="./kalman.js"></script>
+  <!-- <script src="./kalman.js"></script> -->
 
   <!-- 你的 p5 代码 -->
 
@@ -43,6 +43,10 @@
 
   <!-- <script src="sketch_collectdata_uploadVIDEO.js"></script> -->
   <!-- <script src="sketch_collectdata_uploadVIDEO_noThreashold.js"></script> -->
+     <script src="sketch_collectdata_uploadVIDEO_noThreashold_noCentralized.js"></script>
+
+  <!-- <script src="sketch_collectdata_uploadVIDEO_noThreashold_noCentralized_url.js"></script> -->
+
 
   <!-- <script src="sketch_collectdata_uploadVIDEO_kalfman.js"></script> -->
 
@@ -71,7 +75,7 @@
 
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_Acceleration_150frame_toPython_noCentralized.js"></script> -->
   <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_BOTH_150frame_toPython_noCentralized.js"></script> -->
-  <script src="sketch_classify_COUNTINUED_uploadVIDEO_BOTH_60frame_toPython_noCentralized_camera.js"></script>
+  <!-- <script src="sketch_classify_COUNTINUED_uploadVIDEO_BOTH_60frame_toPython_noCentralized_camera.js"></script> -->
  
 
 
