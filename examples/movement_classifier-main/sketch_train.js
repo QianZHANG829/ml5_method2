@@ -16,25 +16,32 @@ let frameCount = 0;
 // load data from json file , use loadJSON() function instead of loadData();
 let json_data = [];
 let fileNames = [
-    ///label a///
-    'test4_A600frame_glideComR_10set5.json',
-    'test4_A600frame_glideComR_10set4.json',
-    'test4_A600frame_glideComR_10set3.json',
-    'test4_A600frame_glideComR_10set2.json',
-    'test4_A600frame_glideComR_10set1.json',
+   //60 sad
+  // "test10_450frame_sad_bye02_27set.json", // issue
+  // "test10_450frame_sad_bye01_18set.json", //issue
+  "test10_450frame_sad_bye02_6set.json",
+  "test10_450frame_sad_bye01_6set.json",
 
-    ///label b///
-    'test5_B600frame_glideComR_QuickStrong_20set2.json',
-    'test5_B600frame_glideComR_QuickStrong_10set3.json',
-    'test5_B600frame_glideComR_QuickStrong_10set4.json',
-    'test5_B600frame_glideComR_QuickStrong_10set5.json'
+  // conflict 55
+  "test10_450frame_conflict_hofesh_rave_8set.json",
+  // "test10_450frame_conflict_sarah_bigmouth_6set.json", // issue
+  // "test10_450frame_conflict_bo_bigmouth_14set.json", // issue
+  // "test10_450frame_conflict_hofesh_21set.json", // issue
+  "test10_450frame_conflict_fullmoon_6set.json",
+
+  // freedom 58
+  "test10_450frame_freedom_smoke_20set.json",
+  "test10_450frame_freedom_bye01_20set.json",
+  // "test10_450frame_freedom_dancer11_10set.json", // issue
+  "test10_450frame_freedom_mak_8set.json"
+
 ];
 
 // 如果你希望将所有样本合并到一个数组，可以 use testData later.
 // let testData = []; // Not needed in this version.
 
 const FPS = 30;
-const CAPTURE_FRAMES = 20 * FPS; // 20秒 x 30帧
+const CAPTURE_FRAMES = 15 * FPS; // 15秒 x 30帧
 
 // 声明一个全局的输入名称数组（33 个关键点，每个关键点对应 x 和 y，共 66 个输入）
 let inputNames = [];
@@ -45,7 +52,7 @@ function preload() {
   
   // 遍历文件名数组加载多个 JSON 文件
   for (let i = 0; i < fileNames.length; i++) {
-    let path = "data/" + fileNames[i];
+    let path = "data/data_test10_emotion/" + fileNames[i];
     json_data[i] = loadJSON(path);
   }
 }
@@ -91,6 +98,8 @@ function setup() {
     if (fileData.data && Array.isArray(fileData.data)) {
       for (let j = 0; j < fileData.data.length; j++) {
         let sample = fileData.data[j];
+        console.log(`File ${i}, sample ${j} frame count: ${sample.xs.length}`);
+
         // 这里假设每个 sample 具有 "xs" 和 "ys" 属性
         let inputs = sample.xs;
         let outputs = sample.ys;

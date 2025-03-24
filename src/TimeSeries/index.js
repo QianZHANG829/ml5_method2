@@ -218,9 +218,52 @@ class timeSeries {
     this.neuralNetworkData.isWarmedUp = true;
   }
 
+  // convertTrainingDataToTensors() {
+  //   console.log("[convertTrainingDataToTensors] training data length:", this.data.training.length);
+  //   return this.neuralNetworkData.convertRawToTensors(this.data.training);
+  // }
+
   convertTrainingDataToTensors() {
-    return this.neuralNetworkData.convertRawToTensors(this.data.training);
+    console.log("[convertTrainingDataToTensors] training data length:", this.data.training.length);
+  
+    this.data.training.forEach((sample, i) => {
+      if (sample.xs) {
+        console.log(
+          `[convertTrainingDataToTensors] sample ${i} xs length:`,
+          sample.xs.length
+        );
+        console.log(
+          `[convertTrainingDataToTensors] sample ${i} xs[0] length:`,
+          sample.xs[0]?.length
+        );
+      }
+      if (sample.ys) {
+        console.log(
+          `[convertTrainingDataToTensors] sample ${i} ys length:`,
+          sample.ys.length
+        );
+        console.log(
+          `[convertTrainingDataToTensors] sample ${i} ys[0] length:`,
+          sample.ys[0]?.length
+        );
+      } else {
+        console.log(`[convertTrainingDataToTensors] sample ${i} has no ys?`);
+      }
+    });
+  
+    // 这里再调用真正的转换函数
+    const { inputs, outputs } = this.neuralNetworkData.convertRawToTensors(
+      this.data.training
+    );
+  
+    console.log("[convertTrainingDataToTensors] after convert:");
+    console.log("inputs.shape:", inputs.shape);
+    console.log("outputs.shape:", outputs.shape);
+  
+    return { inputs, outputs };
   }
+  
+
 
   createNetworkLayers(layerJsonArray) {
     const layers = [...layerJsonArray];
@@ -273,7 +316,7 @@ class timeSeries {
             filters: 16,
             kernelSize: 3,
             activation: "relu",
-            inputShape: this.neuralNetworkData.meta.seriesShape,
+            // inputShape: this.neuralNetworkData.meta.seriesShape, 
           },
           {
             type: "maxPooling1d",

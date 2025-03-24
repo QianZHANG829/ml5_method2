@@ -420,6 +420,7 @@ class NeuralNetworkData {
       const feature_length = features.length;
 
       const seriesStep = dataRaw[0]["xs"].length;
+      console.log('dataRaw[0].xs =', dataRaw[0].xs);
 
       const batch = normalized[features[0]].length / seriesStep;
 
@@ -750,6 +751,8 @@ class NeuralNetworkData {
       }
 
       this.data.raw = this.findEntries(loadedData);
+      console.log('dataRaw =', dataRaw);  // 看看dataRaw实际长什么样子
+
 
       // check if a data or entries property exists
       if (!this.data.raw.length > 0) {
