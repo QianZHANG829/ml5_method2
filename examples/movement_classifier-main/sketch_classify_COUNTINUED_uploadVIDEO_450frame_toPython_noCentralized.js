@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────
 // 使用上传视频、计算 velocity 和 acceleration 特征进行动作分类预测
 // ─────────────
+
 // 视频宽高（默认值）
 let vidWidth = 1920;
 let vidHeight = 1080;
@@ -16,6 +17,7 @@ let connections;      // 用于绘制骨架连线的索引
 // let poseLabelAcceleration = "";
 let poseLabelEmotion = "";
 let statusText = "Stopped";  // 当前状态文本（右上角显示）
+let confidence;
 
 // ml5.timeSeries 模型分类器
 // let classifierVelocity;
@@ -217,9 +219,11 @@ function draw() {
   } else if (poseLabelEmotion.includes("Conflict & Tension")) {
     fill(255, 0, 0);
   } else {
-    fill(255, 0, 255);
+    fill(0, 0, 255);
   }
-  text(`Emotion: ${poseLabelEmotion}`, width / 4, height / 4);
+  // text(`Emotion: ${poseLabelEmotion} ${confidence}`, width / 4, height / 4);
+  text("Emotion: " + poseLabelEmotion + confidence, width / 4, height / 4);
+
   }
 
 
@@ -292,22 +296,16 @@ function predictPose() {
     }
     frameCount++;
     
-    // 每秒（大约每 30 帧）进行一次预测（确保采集满 xx 帧）
-    if (frameCount % FPS === 0) {
-      // 若帧数不足，则用最后一帧补全
-      if (sequence.length < CAPTURE_FRAMES) {
-        console.log("Not enough frames (" + sequence.length + "), filling up with last frame...");
-        let lastFrame = sequence[sequence.length - 1];
-        while (sequence.length < CAPTURE_FRAMES) {
-          sequence.push(lastFrame);
-        }
+    // 每秒（大约每 x 帧）进行一次预测（确保采集满 xx 帧）
+    if (frameCount % (10 * FPS) === 0) {
+      // firstly, collect 450 frame to predict emotion
+      if (sequence.length >= CAPTURE_FRAMES) {
+        console.log("Predicting with full sequence (" + sequence.length + " frames).");
+        let normalizedSeq = computeNormalizedFeatures(sequence);
+        classifierEmotion.classify(normalizedSeq, gotResultsEmotion);
+      } else {
+        console.log("Collecting data: " + sequence.length + " frames, waiting for " + CAPTURE_FRAMES + " frames to start prediction.");
       }
-      console.log("Predicting with raw sequence length: " + sequence.length);
-      
-      // 计算归一化特征（数据 shape 将为 [450, 66]）
-      let normalizedSeq = computeNormalizedFeatures(sequence);
-      // 调用情感模型进行预测
-      classifierEmotion.predict(normalizedSeq, gotResultsEmotion);
     }
   }
   setTimeout(predictPose, 1000 / FPS);
@@ -315,47 +313,9 @@ function predictPose() {
 
 function gotResultsEmotion(results) {
   console.log("预测结果：", results);
-  if (!results || results.length === 0) return;
-  
-  const value = results[0].value;
-  let probabilities;
-  if (Array.isArray(value)) {
-    probabilities = value;
-  } else if (typeof value === 'object' && value !== null) {
-    probabilities = Object.values(value);
-  } else {
-    probabilities = [value];
-  }
-  
-  // 如果数组所有元素都是数字且长度大于1，则用 argmax 进行标签映射
-  if (probabilities.length > 1 && probabilities.every(el => typeof el === 'number')) {
-    const labels = [
-      "Sad & Inner Struggle",
-      "Conflict & Tension",
-      "Freedom & Liberation"
-    ];
-    let maxIndex = 0;
-    for (let i = 1; i < probabilities.length; i++) {
-      if (probabilities[i] > probabilities[maxIndex]) {
-        maxIndex = i;
-      }
-    }
-    let confidence = probabilities[maxIndex];
-    // 若 confidence 不是数字，则设置为 0
-    if (typeof confidence !== 'number') {
-      confidence = 0;
-    }
-    let bestLabel = labels[maxIndex] || "unknown";
-    poseLabelEmotion = `${bestLabel} (${confidence.toFixed(2)})`;
-  } else {
-    // 如果不是多元素数组，则直接使用返回的 label 和 value
-    const rawLabel = results[0].label;
-    // 确保 value 为数字
-    const conf = typeof value === 'number' ? value : Number(value);
-    poseLabelEmotion = `${rawLabel} (${conf.toFixed(2)})`;
-  }
-  
-  console.log("Label:", results[0].label, "Value:", results[0].value);
+  // if (!results || results.length === 0) return;
+  poseLabelEmotion = results[0].label;
+  confidence = "Confidence: " + nf(results[0].confidence, 0, 2);
 }
 
   
@@ -381,8 +341,7 @@ function startDetection() {
   // 延时 1 秒后启动检测
   setTimeout(() => {
     console.log("Detection started in continuous sliding window mode");
-    poseLabelVelocity = "";
-    poseLabelAcceleration = "";
+    poseLabelEmotion = "";
     sequence = [];
     frameCount = 0;
     detecting = true;

@@ -98,7 +98,7 @@ function setup() {
   }
   
 
-  // 初始化 ml5.timeSeries 模型，此时输入使用加速度特征名称
+  // 初始化 ml5.timeSeries 模型，
   let options = {
     task: "classification",
     dataMode: "spatial",  // spatial 模式下每个样本的 xs 是一个对象
@@ -121,6 +121,7 @@ function setup() {
         let inputs = samplesFeatures[j]; 
         let outputs = fileData.data[j].ys;
         classifier.addData(inputs, outputs);
+        console.log(`Data added: output = ${outputs.label}`);
       }
     }
   }
@@ -151,7 +152,7 @@ function computeNormalizedFeatures(frames) {
   return normalizedFrames;
 }
 
-// 从 JSON 文件数据中提取所有样本的速度特征
+// 从 JSON 文件数据中提取所有样本的特征
 function loadSamplesFromData(fileData, filename) {
   let samplesFeatures = [];
   if (fileData.data && Array.isArray(fileData.data)) {
