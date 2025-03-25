@@ -420,8 +420,6 @@ class NeuralNetworkData {
       const feature_length = features.length;
 
       const seriesStep = dataRaw[0]["xs"].length;
-      console.log('dataRaw[0].xs =', dataRaw[0].xs);
-
       const batch = normalized[features[0]].length / seriesStep;
 
       this.meta.seriesShape = [seriesStep, feature_length];

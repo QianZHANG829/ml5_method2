@@ -124,7 +124,7 @@ class NeuralNetworkVis {
         name: "Training Performance",
       },
       ['loss', 'val_loss', 'acc', 'val_acc'],
-      // ['loss', 'val_loss'],
+      // ['loss'],
 
       {
         height: this.config.height,
