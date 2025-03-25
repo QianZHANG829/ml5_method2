@@ -574,8 +574,10 @@ class timeSeries {
 
   //   return unformattedResults;
   // }
-
+  
+  ///////////////////////////////////
   // mannually add softmax
+  ///////////////////////////////////
   async classifyInternal(_input) {
     const { meta } = this.neuralNetworkData;
     const headers = Object.keys(meta.inputs);

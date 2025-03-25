@@ -20,23 +20,23 @@ let frameCount = 0;
 let json_data = [];
 let fileNames = [
   //60 sad
-  "test10_450frame_sad_bye02_27set.json", // issue
-  "test10_450frame_sad_bye01_18set.json", //issue
+  "test10_450frame_sad_bye02_27set.json", 
+  "test10_450frame_sad_bye01_18set.json", 
   "test10_450frame_sad_bye02_6set.json",
   "test10_450frame_sad_bye01_6set.json",
 
   // conflict 55
   "test10_450frame_conflict_hofesh_rave_8set.json",
-  "test10_450frame_conflict_sarah_bigmouth_6set.json", // issue
-  "test10_450frame_conflict_bo_bigmouth_14set.json", // issue
-  "test10_450frame_conflict_hofesh_21set.json", // issue
+  "test10_450frame_conflict_sarah_bigmouth_6set.json", 
+  "test10_450frame_conflict_bo_bigmouth_14set.json", 
+  "test10_450frame_conflict_hofesh_21set.json", 
   "test10_450frame_conflict_fullmoon_6set.json",
 
   // freedom 58
   "test10_450frame_freedom_smoke_20set.json",
   "test10_450frame_freedom_bye01_20set.json",
-  "test10_450frame_freedom_dancer11_10set.json", // issue
-  "test10_450frame_freedom_mak_8set.json"
+  "test10_450frame_freedom_dancer11_10set.json", 
+  // "test10_450frame_freedom_mak_8set.json" 
 
 ];
 
