@@ -332,7 +332,6 @@ class timeSeries {
           },
           {
             type: "dense",
-            units: 3,
             activation: "softmax",
           },
         ];
@@ -538,35 +537,81 @@ class timeSeries {
     return callCallback(this.classifyInternal(_input), _cb);
   }
 
+  // async classifyInternal(_input) {
+  //   const { meta } = this.neuralNetworkData;
+  //   const headers = Object.keys(meta.inputs);
+
+  //   let inputData;
+
+  //   inputData = this.formatInputsForPredictionAll(_input);
+
+  //   const unformattedResults = await this.neuralNetwork.classify(inputData);
+  //   inputData.dispose();
+
+  //   if (meta !== null) {
+  //     const label = Object.keys(meta.outputs)[0];
+  //     const vals = Object.entries(meta.outputs[label].legend);
+
+  //     const formattedResults = unformattedResults.map((unformattedResult) => {
+  //       return vals
+  //         .map((item, idx) => {
+  //           return {
+  //             [item[0]]: unformattedResult[idx],
+  //             label: item[0],
+  //             confidence: unformattedResult[idx],
+  //           };
+  //         })
+  //         .sort((a, b) => b.confidence - a.confidence);
+  //     });
+
+  //     // return single array if the length is less than 2,
+  //     // otherwise return array of arrays
+  //     if (formattedResults.length < 2) {
+  //       return formattedResults[0];
+  //     }
+  //     return formattedResults;
+  //   }
+
+  //   return unformattedResults;
+  // }
+
+  // mannually add softmax
   async classifyInternal(_input) {
     const { meta } = this.neuralNetworkData;
     const headers = Object.keys(meta.inputs);
 
-    let inputData;
-
-    inputData = this.formatInputsForPredictionAll(_input);
+    let inputData = this.formatInputsForPredictionAll(_input);
 
     const unformattedResults = await this.neuralNetwork.classify(inputData);
     inputData.dispose();
+
+    // 定义一个 softmax 函数
+    function softmax(arr) {
+      const maxVal = Math.max(...arr);
+      const exps = arr.map(v => Math.exp(v - maxVal));
+      const sumExps = exps.reduce((a, b) => a + b, 0);
+      return exps.map(v => v / sumExps);
+    }
 
     if (meta !== null) {
       const label = Object.keys(meta.outputs)[0];
       const vals = Object.entries(meta.outputs[label].legend);
 
+      // 对每个 unformattedResult 应用 softmax 后再映射成格式化结果
       const formattedResults = unformattedResults.map((unformattedResult) => {
+        // 手动归一化：确保返回的是概率分布
+        const normalizedResult = softmax(unformattedResult);
         return vals
           .map((item, idx) => {
             return {
-              [item[0]]: unformattedResult[idx],
+              [item[0]]: normalizedResult[idx],
               label: item[0],
-              confidence: unformattedResult[idx],
+              confidence: normalizedResult[idx],
             };
           })
           .sort((a, b) => b.confidence - a.confidence);
       });
 
-      // return single array if the length is less than 2,
-      // otherwise return array of arrays
       if (formattedResults.length < 2) {
         return formattedResults[0];
       }
@@ -575,6 +620,9 @@ class timeSeries {
 
     return unformattedResults;
   }
+
+
+
 
   formatInputsForPredictionAll(_input) {
     const { meta } = this.neuralNetworkData;

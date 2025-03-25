@@ -297,7 +297,7 @@ function predictPose() {
     frameCount++;
     
     // 每秒（大约每 x 帧）进行一次预测（确保采集满 xx 帧）
-    if (frameCount % (10 * FPS) === 0) {
+    if (frameCount % (15 * FPS) === 0) {
       // firstly, collect 450 frame to predict emotion
       if (sequence.length >= CAPTURE_FRAMES) {
         console.log("Predicting with full sequence (" + sequence.length + " frames).");
