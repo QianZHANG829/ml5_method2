@@ -91,6 +91,7 @@ function setup() {
       width: { ideal: 1920 },
       height: { ideal: 1080 }
     },
+    audio: false
   };
   video = createCapture(constraints, () => {
     console.log("Camera stream is ready!");
