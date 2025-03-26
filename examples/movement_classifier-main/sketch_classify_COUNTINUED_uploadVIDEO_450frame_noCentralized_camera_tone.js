@@ -30,7 +30,7 @@ let currentPlayer = null;  // 当前播放的音乐对象
 
 // 模型文件信息（请根据实际情况修改文件路径）
 let emotionModelDetails = {
-  model: "model/Model_Emotion_test10.1/model.json",  
+  model: "model/Model_Emotion_test10.1/model.json",
   metadata: "model/Model_Emotion_test10.1/model_meta.json",
   weights: "model/Model_Emotion_test10.1/model.weights.bin",
 };
@@ -42,23 +42,23 @@ const musicMapping = {
     "Music/Conflict/conflict_black-box-mutation-128364.mp3",
     "Music/Conflict/conflict_halloween-bgmghostdark-amp-gothic-piano-247732.mp3",
     "Music/Conflict/conflict_waltz-in-a-minor-251169.mp3"
-    
+
   ],
   "Freedom & Liberation": [
-    "Music/Freedom/freedom_classical-piano-by-beethoven-moonlight-sonata-no14.mp3.mp3",
+    "Music/Freedom/freedom_classical-piano-by-beethoven-moonlight-sonata-no14.mp3",
     "Music/Freedom/freedom_classical-piano-by-chopin-prelude.mp3",
     "Music/Freedom/freedom_worm.mp3",
     "Music/Freedom/freedom_classical-piano-by-schumann-restless-dreams.mp3"
   ],
 
-  "Sadness & Inner Struggle": [
+  "Sad & Inner Struggle": [
     "Music/Sadness/sad_moonlit-night-relaxing-piano.mp3",
     "Music/Sadness/sad_catastrophe.mp3",
     "Music/Sadness/ssad_classical-piano-by-chopin-ballade.mp3",
     "Music/Sadness/sad_trois-gymnopedie-gymnopedie.mp3"
 
   ]
-  
+
 };
 
 
@@ -85,7 +85,7 @@ let switchButton;
 function preload() {
   // 加载 BlazePose 模型
   bodyPose = ml5.bodyPose("BlazePose", modelReady);
-  
+
   // 初始化 ml5.timeSeries 模型
   let options = {
     task: "classification",
@@ -121,8 +121,8 @@ function setup() {
   });
   video.hide(); // 隐藏默认的视频 DOM 元素
 
-  
-  
+
+
   // 当摄像头元数据加载完毕后，启动关键点检测
   video.elt.onloadedmetadata = () => {
     videoLoaded();
@@ -136,7 +136,7 @@ function setup() {
   classifierEmotion.load(emotionModelDetails, () => {
     console.log("Emotion model loaded.");
   }).catch(err => console.error("Emotion model loading error:", err));
-  
+
 
   console.log("Press 'd' to start detection.");
 }
@@ -167,18 +167,18 @@ function videoLoaded() {
   controlBar.style("display", "flex");
   controlBar.style("align-items", "center");
   controlBar.style("padding", "0 10px");
-  
+
   // 创建进度条（滑块），视频加载后获取 video.duration() 作为最大值
   videoSlider = createSlider(0, video.duration(), 0, 0.01);
   videoSlider.parent(controlBar);
   videoSlider.style("flex-grow", "1");
-  
+
   // 当用户拖动滑块时，更新视频当前时间
   videoSlider.input(() => {
     let t = videoSlider.value();
     video.time(t);
   });
-  
+
   // 创建播放/暂停按钮
   playButton = createButton("Play/Pause");
   playButton.parent(controlBar);
@@ -206,19 +206,19 @@ function draw() {
     // 计算偏移量，将视频居中显示
     let xOffset = (vidWidth - scaledWidth) / 2;
     let yOffset = (vidHeight - scaledHeight) / 2;
-    
+
     // 绘制视频，不进行拉伸
     image(video, xOffset, yOffset, scaledWidth, scaledHeight);
-  
+
     // 自动更新进度条，使其跟随视频播放
     if (video && videoSlider && video.time && video.duration) {
       videoSlider.value(video.time());
     }
-  
+
     // 绘制检测到的关键点和骨架连线（按照相同的缩放比例与偏移量）
     for (let i = 0; i < poses.length; i++) {
       let pose = poses[i];
-      
+
       // 绘制骨架连线
       for (let j = 0; j < connections.length; j++) {
         let pointA = pose.keypoints[connections[j][0]];
@@ -227,10 +227,10 @@ function draw() {
           stroke(255, 0, 0);
           strokeWeight(2);
           line(pointA.x * scaleFactor + xOffset, pointA.y * scaleFactor + yOffset,
-               pointB.x * scaleFactor + xOffset, pointB.y * scaleFactor + yOffset);
+            pointB.x * scaleFactor + xOffset, pointB.y * scaleFactor + yOffset);
         }
       }
-      
+
       // 绘制关键点
       for (let j = 0; j < pose.keypoints.length; j++) {
         let keypoint = pose.keypoints[j];
@@ -252,7 +252,7 @@ function draw() {
   textSize(32);
   textAlign(LEFT, TOP);
   text(emotionModelDetails.model, 10, 10);
-  
+
 
   // 在右上角显示当前状态
   textSize(24);
@@ -276,22 +276,22 @@ function draw() {
   // text(`Emotion: ${poseLabelEmotion} ${confidence}`, width / 4, height / 4);
   text("Emotion: " + poseLabelEmotion + confidence, width / 4, height / 4);
 
-  }
+}
 
 
-  // if (poseLabelVelocity.includes("Fast")) {
-  //   fill(0, 255, 0); // 若预测标签为 "Sudden"，则显示为绿色
-  // } else {
-  //   fill(255, 0, 255); // 其他情况（如 Sustained）维持原有颜色
-  // }
-  // text(`Velocity: ${poseLabelVelocity}`, width / 4, height / 4);
+// if (poseLabelVelocity.includes("Fast")) {
+//   fill(0, 255, 0); // 若预测标签为 "Sudden"，则显示为绿色
+// } else {
+//   fill(255, 0, 255); // 其他情况（如 Sustained）维持原有颜色
+// }
+// text(`Velocity: ${poseLabelVelocity}`, width / 4, height / 4);
 
-  // if (poseLabelAcceleration.includes("Sudden")) {
-  //   fill(0, 255, 0); // 若预测标签为 "Sudden"，则显示为绿色
-  // } else {
-  //   fill(255, 0, 255); // 其他情况（如 Sustained）维持原有颜色
-  // }
-  // text(`Acceleration: ${poseLabelAcceleration}`, width / 4, height / 4 + 50);
+// if (poseLabelAcceleration.includes("Sudden")) {
+//   fill(0, 255, 0); // 若预测标签为 "Sudden"，则显示为绿色
+// } else {
+//   fill(255, 0, 255); // 其他情况（如 Sustained）维持原有颜色
+// }
+// text(`Acceleration: ${poseLabelAcceleration}`, width / 4, height / 4 + 50);
 
 
 
@@ -331,14 +331,14 @@ function computeNormalizedFeatures(frames) {
 function predictPose() {
   if (detecting && poses.length > 0) {
     let pose = poses[0];
-    
+
     // 构造当前帧的关键点坐标对象（格式： "x0", "y0", ..., "x32", "y32"）
     let rawFrameObj = {};
     for (let i = 0; i < 33; i++) {
       rawFrameObj["x" + i] = pose.keypoints[i].x;
       rawFrameObj["y" + i] = pose.keypoints[i].y;
     }
-    
+
     // 维护固定长度的滑动窗口
     if (sequence.length < CAPTURE_FRAMES) {
       sequence.push(rawFrameObj);
@@ -347,7 +347,7 @@ function predictPose() {
       sequence.push(rawFrameObj);
     }
     frameCount++;
-    
+
     // 每秒（大约每 x 帧）进行一次预测（确保采集满 xx 帧）
     if (frameCount % (15 * FPS) === 0) {
       // firstly, collect 450 frame to predict emotion
@@ -375,27 +375,42 @@ function gotResultsEmotion(results) {
     let tracks = musicMapping[poseLabelEmotion];
     // 随机选择一个音乐文件
     let chosenTrack = tracks[Math.floor(Math.random() * tracks.length)];
-    
+
     // 如果已有播放器在播放，先停止它
     if (currentPlayer) {
-      currentPlayer.stop();
+      stopWithFadeOut(currentPlayer, 2);
     }
-    
-    // 创建新的 Tone.Player 并连接到音频输出
-    currentPlayer = new Tone.Player(chosenTrack).toDestination();
-    
-    // 由于浏览器策略，需要确保音频上下文启动，通常通过用户交互触发
-    Tone.start().then(() => {
-      currentPlayer.start();
-      console.log("正在播放: " + chosenTrack);
-    });
+
+    // 创建 Tone.Player，并在文件加载完成后的回调中启动播放
+    currentPlayer = new Tone.Player(chosenTrack, () => {
+      // 文件加载完成，确保音频上下文启动后再播放
+      Tone.start().then(() => {
+        // currentPlayer.start();
+        // 文件加载完成后淡入播放
+        playWithFadeIn(currentPlayer, 2);
+        console.log("正在播放: " + chosenTrack);
+      });
+    }).toDestination();
   } else {
     console.log("没有找到对应情感的音乐");
   }
-
 }
 
-  
+
+// 淡入播放函数
+function playWithFadeIn(player, fadeDuration = 3) {
+  player.volume.value = -Infinity;
+  player.start();
+  player.volume.rampTo(0, fadeDuration);
+}
+
+// 淡出停止函数
+function stopWithFadeOut(player, fadeDuration = 3) {
+  if (player) {
+    player.volume.rampTo(-Infinity, fadeDuration);
+    setTimeout(() => player.stop(), fadeDuration * 1000);
+  }
+}
 
 
 // ─────────────────────────────
