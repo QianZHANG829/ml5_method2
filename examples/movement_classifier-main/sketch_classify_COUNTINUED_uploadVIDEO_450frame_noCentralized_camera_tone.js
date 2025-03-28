@@ -83,6 +83,14 @@ let controlBar;         // 控制条容器
 let usingCamera = true;
 let switchButton;
 
+// 新增全局变量：记录上一次情绪以及每种情绪已播放的曲目
+let lastEmotion = "";
+let playedTracks = {
+  "Conflict & Tension": [],
+  "Freedom & Liberation": [],
+  "Sad & Inner Struggle": []
+};
+
 function preload() {
   // 加载 BlazePose 模型
   bodyPose = ml5.bodyPose("BlazePose", modelReady);
@@ -364,69 +372,102 @@ function predictPose() {
   setTimeout(predictPose, 1000 / FPS);
 }
 
+
+/**
+ * 交叉混合函数
+ * newPlayer 作为新曲目，在淡入的同时对当前正在播放的音乐（currentPlayer）进行淡出
+ * fadeDuration 为交叉混合时间，单位为秒
+ */
+function crossfadePlayers(newPlayer, fadeDuration = 2) {
+  let now = Tone.now();
+  
+  // 保存旧播放器引用
+  let oldPlayer = currentPlayer;
+  
+  // 新播放器淡入：
+  newPlayer.volume.cancelScheduledValues(now);
+  newPlayer.volume.setValueAtTime(-60, now); // 初始设为 -60 dB
+  newPlayer.start(now);
+  newPlayer.volume.linearRampToValueAtTime(0, now + fadeDuration);
+
+  // 如果有旧播放器，开始淡出：
+  if (oldPlayer) {
+    oldPlayer.volume.cancelScheduledValues(now);
+    oldPlayer.volume.linearRampToValueAtTime(-60, now + fadeDuration);
+    // 淡出结束后停止旧播放器
+    setTimeout(() => {
+      oldPlayer.stop();
+    }, fadeDuration * 1000);
+  }
+
+  // 更新当前播放器引用为新播放器
+  currentPlayer = newPlayer;
+}
+
+
+
 function gotResultsEmotion(results) {
   console.log("预测结果：", results);
   // if (!results || results.length === 0) return;
   poseLabelEmotion = results[0].label;
   confidence = "Confidence: " + nf(results[0].confidence, 0, 2);
 
-  // 播放对应音乐
-  // 检查映射表中是否存在对应情感的音乐列表
+  // 如果情绪与上次相同，则保持当前音乐不变
+  if (poseLabelEmotion === lastEmotion) {
+    console.log("情绪未变化，继续播放当前音乐");
+    return;
+  }
+
+  // 检查该情绪对应的音乐列表是否存在
   if (musicMapping[poseLabelEmotion]) {
     let tracks = musicMapping[poseLabelEmotion];
-    // 随机选择一个音乐文件
-    let chosenTrack = tracks[Math.floor(Math.random() * tracks.length)];
-
-    // 如果已有播放器在播放，先停止它
-    if (currentPlayer) {
-      stopWithFadeOut(currentPlayer, 2);
+    // 筛选出该情绪下尚未播放过的曲目
+    let availableTracks = tracks.filter(track => playedTracks[poseLabelEmotion].indexOf(track) === -1);
+    if (availableTracks.length === 0) {
+      // 如果所有曲目都播放过，则重置记录
+      playedTracks[poseLabelEmotion] = [];
+      availableTracks = tracks.slice();
     }
+    // 随机选取一首未播放的曲目
+    let chosenTrack = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+    playedTracks[poseLabelEmotion].push(chosenTrack);
 
-    // 创建 Tone.Player，并在文件加载完成后的回调中启动播放
-    currentPlayer = new Tone.Player(chosenTrack, () => {
-      // 文件加载完成，确保音频上下文启动后再播放
-      Tone.start().then(() => {
-        // currentPlayer.start();
-        // 文件加载完成后淡入播放
-        playWithFadeIn(currentPlayer, 2);
-        console.log("正在播放: " + chosenTrack);
-      });
+    // 创建新的 Tone.Player 播放新曲目
+    // 注意：Tone.start() 应在用户首次交互时调用一次，此处确保音频上下文已解锁
+    let newPlayer = new Tone.Player(chosenTrack, () => {
+      // 跨曲目交叉混合：新曲子淡入，旧曲子同时淡出
+      crossfadePlayers(newPlayer, 2); // 混合时间 2 秒
+      console.log("正在播放: " + chosenTrack);
     }).toDestination();
+
+    // 更新最后检测到的情绪
+    lastEmotion = poseLabelEmotion;
   } else {
     console.log("没有找到对应情感的音乐");
   }
+
 }
 
 
-// 淡入播放函数
-function playWithFadeIn(player, fadeDuration = 3) {
-  player.volume.value = -Infinity;
-  player.start();
-  player.volume.rampTo(0, fadeDuration);
-}
-
-// 淡出停止函数
-function stopWithFadeOut(player, fadeDuration = 3) {
-  if (player) {
-    player.volume.rampTo(-Infinity, fadeDuration);
-    setTimeout(() => player.stop(), fadeDuration * 1000);
-  }
-}
 
 
 // ─────────────────────────────
 // 按 d 键切换检测状态：启动或停止连续预测
 function keyPressed() {
   if (key === 'd' || key === 'D') {
-    if (!detecting) {
-      startDetection();
-      statusText = "Detecting";
-    } else {
-      detecting = false;
-      statusText = "Stopped";
-      console.log("Detection stopped.");
-    }
-  }
+    Tone.start().then(() => {
+      console.log("Audio Context started!");
+      // 后续逻辑
+      if (!detecting) {
+        startDetection();
+        statusText = "Detecting";
+      } else {
+        detecting = false;
+        statusText = "Stopped";
+        console.log("Detection stopped.");
+      }
+    });
+  }  
 }
 
 function startDetection() {
@@ -470,3 +511,4 @@ function toggleSource() {
   }
   usingCamera = !usingCamera;
 }
+
