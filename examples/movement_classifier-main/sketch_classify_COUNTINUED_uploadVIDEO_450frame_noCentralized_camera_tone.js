@@ -54,8 +54,9 @@ const musicMapping = {
   "Sad & Inner Struggle": [
     "Music/Sadness/sad_moonlit-night-relaxing-piano.mp3",
     "Music/Sadness/sad_catastrophe.mp3",
-    "Music/Sadness/ssad_classical-piano-by-chopin-ballade.mp3",
+    "Music/Sadness/sad_classical-piano-by-chopin-ballade.mp3",
     "Music/Sadness/sad_trois-gymnopedie-gymnopedie.mp3"
+
 
   ]
 
