@@ -1,7 +1,5 @@
 let video, poseNet, poses = [];
-let fmSynth, reverb, noiseSynth, padSynth;
-// let prevWrist, prevSpeed = 0, smoothedAccel = 0;
-let prevWrist, prevSpeed = 0, smoothedAccel = 0;
+let celloSynth, padSynth, noiseSynth, reverb, twinkleSynth;
 
 function setup() {
   createCanvas(1920, 1080);
@@ -12,132 +10,124 @@ function setup() {
   poseNet = ml5.bodyPose("BlazePose", () => console.log("Model Loaded"));
   poseNet.detectStart(video, gotPoses);
 
-  setupSynths();
+  setupSound();
 }
 
-async function setupSynths() {
-    await Tone.start();
-  
-    const noise = new Tone.Noise("brown").start();
-    const noiseFilter = new Tone.Filter(300, "lowpass");
-    const noiseReverb = new Tone.Reverb({ decay: 12, wet: 0.9 });
-    noise.chain(noiseFilter, noiseReverb, Tone.Destination);
-    noise.volume.value = -20;
-  
-    Tone.Transport.scheduleRepeat((time) => {
-      noiseFilter.frequency.linearRampTo(200 + Math.random() * 500, 10, time);
-    }, 12);
-  
-    padSynth = new Tone.PolySynth(Tone.AMSynth, {
-      harmonicity: 2,
-      oscillator: { type: "triangle" },
-      envelope: { attack: 4, decay: 4, sustain: 0.3, release: 6 },
-    });
+async function setupSound() {
+  await Tone.start();
 
-    // 创建 Gain 节点控制整体音量（比如降低为原来的一半：0.5）
-    const padGain = new Tone.Gain(0.3).toDestination();
+  // --- 背景氛围 ---
+  // Brown Noise (稳定背景)
+  noiseSynth = new Tone.Noise("brown").start();
+  const noiseFilter = new Tone.Filter(250, "lowpass");
+  const noiseReverb = new Tone.Reverb({ decay: 12, wet: 0.9 });
+  noiseSynth.chain(noiseFilter, noiseReverb, Tone.Destination);
+  noiseSynth.volume.value = -20;
 
-    // 连接方式修改为 padSynth → reverb → padGain → destination
-    reverb = new Tone.Reverb({ decay: 12, wet: 0.9 });
-    padSynth.connect(reverb);
-    reverb.connect(padGain);
-    
-    // 自动每6秒触发一次德彪西风格和弦
-    Tone.Transport.scheduleRepeat((time) => {
-      const chords = [["C3", "Eb3", "G3"], ["F3", "Ab3", "C4"]];
-      let chord = random(chords);
-      padSynth.triggerAttackRelease(chord, "1n", time);
-    }, 16);
-  
-    fmSynth = new Tone.FMSynth({
-      harmonicity: 5,
-      modulationIndex: 10,
-      oscillator: { type: "sine" },
-      envelope: { attack: 0.01, decay: 0.5, sustain: 0.1, release: 1 },
-      modulation: { type: "triangle" },
-      modulationEnvelope: { attack: 0.02, decay: 0.3, sustain: 0.1, release: 0.5 }
-    });
-    fmSynth.connect(reverb);
-  
-    Tone.Transport.start();
-  }
-  
-  function triggerFMSynth(smoothedAccel) {
-    let freq = map(smoothedAccel, 10, 40, 200, 800, true);
-    let vol = map(abs(smoothedAccel), 2, 20, -5, -5, true);
-   
-    fmSynth.volume.value = vol;
-    fmSynth.triggerAttackRelease(freq, "16n", Tone.now() + 0.05);
-    console.log("smoothedaccel:" + smoothedAccel + "Triggering FM Synth with frequency: " + freq + " and volume: " + vol);
-  }
-  
-  function draw() {
-    image(video, 0, 0, width, height);
-    drawKeypoints();
-  
-    if (poses.length > 0) {
-      const pose = poses[0].keypoints;
-      const leftWrist = pose[15];
-      const rightWrist = pose[16];
-  
-      if (leftWrist.confidence > 0.5 && rightWrist.confidence > 0.5) {
-        let wrist = {
-          x: (leftWrist.x + rightWrist.x) / 2,
-          y: (leftWrist.y + rightWrist.y) / 2
-        };
-  
-        if(prevWrist) {
-          let speed = dist(wrist.x, wrist.y, prevWrist.x, prevWrist.y);
-          let accel = speed - prevSpeed; 
-          smoothedAccel = lerp(smoothedAccel, accel, 0.1);
-  
-          if(abs(smoothedAccel) > 2) {
-            triggerFMSynth(smoothedAccel);
-          }
-        }
-  
-        prevSpeed = dist(wrist.x, wrist.y, prevWrist ? prevWrist.x : wrist.x, prevWrist ? prevWrist.y : wrist.y);
-        prevWrist = wrist;
+  // 德彪西Pad（保持原状）
+  padSynth = new Tone.PolySynth(Tone.AMSynth, {
+    harmonicity: 2,
+    oscillator: { type: "triangle" },
+    envelope: { attack: 4, decay: 4, sustain: 0.3, release: 6 },
+  });
+
+  const padGain = new Tone.Gain(0.3).toDestination();
+  reverb = new Tone.Reverb({ decay: 12, wet: 0.9 });
+  padSynth.connect(reverb);
+  reverb.connect(padGain);
+
+  Tone.Transport.scheduleRepeat((time) => {
+    const chords = [["C3", "Eb3", "G3"], ["F3", "Ab3", "C4"]];
+    padSynth.triggerAttackRelease(random(chords), "2n", time);
+  }, 8);
+
+  // --- 动作触发层 ---
+
+  // 大提琴 (FM Synth模拟)
+  celloSynth = new Tone.FMSynth({
+    harmonicity: 1.2,
+    modulationIndex: 4,
+    oscillator: { type: "triangle" }, // triangle更温暖类似大提琴
+    envelope: { attack: 1, decay: 2, sustain: 0.5, release: 3 },
+    modulation: { type: "sine" },
+    modulationEnvelope: { attack: 0.5, decay: 1, sustain: 0.4, release: 1.5 }
+  });
+  celloSynth.connect(reverb).connect(new Tone.Gain(0.3).toDestination());
+
+  // Twinkling Synth (表达短暂挣扎)
+  twinkleSynth = new Tone.FMSynth({
+    harmonicity: 20,
+    modulationIndex: 20,
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.01, decay: 1, sustain: 0, release: 1 },
+    modulationEnvelope: { attack: 0.005, decay: 0.2, sustain: 0, release: 0.5 }
+  });
+  const twinkleGain = new Tone.Gain(0.2);
+  const twinkleReverb = new Tone.Reverb({ decay: 6, wet: 0.7 });
+  const lowpass = new Tone.Filter(400, "lowpass").toDestination(); // 设定截止频率800Hz，适合降低明亮度
+  // 连接链路：Synth → 低通滤波器 → Reverb → Gain → Destination
+  twinkleSynth.chain(lowpass, twinkleReverb, twinkleGain);
+
+  Tone.Transport.start();
+}
+
+function draw() {
+  image(video, 0, 0, width, height);
+  drawKeypoints();
+
+  if (poses.length > 0) {
+    const pose = poses[0].keypoints;
+    const nose = pose[0];
+    const leftShoulder = pose[11];
+    const rightShoulder = pose[12];
+
+    // 低头程度 (头和肩膀连线比较)
+    if (nose.confidence > 0.5 && leftShoulder.confidence > 0.5 && rightShoulder.confidence > 0.5) {
+      let shoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+      let headDrop = shoulderY - nose.y;
+      console.log("Head Drop:", headDrop);
+
+      if (headDrop > 250) { // 大幅低头
+        celloSynth.triggerAttackRelease("C2", "2n", Tone.now());
+      }
+
+      // 身体蜷缩: 双肩距离（肩膀内收）
+      let shoulderDist = dist(leftShoulder.x, leftShoulder.y, rightShoulder.x, rightShoulder.y);
+      console.log("Shoulder Distance:", shoulderDist);
+      if (shoulderDist < 500) { // 身体明显蜷缩
+        padSynth.triggerAttackRelease(["F2", "Ab2", "C3"], "2n", Tone.now());
+      }
+
+      // 抬头瞬间（短暂希望感）
+      if (headDrop < 10) { // 明显抬头
+        const twinkleNotes = ["C6", "E6", "G6", "B6", "D7"];
+        let randomNote = random(twinkleNotes);
+        twinkleSynth.triggerAttackRelease(randomNote, "16n", Tone.now());
       }
     }
   }
-  
-  
+}
 
+function gotPoses(results) {
+  poses = results;
+}
 
-  function gotPoses(results) {
-    poses = results;
-  }
-  
-  function drawKeypoints() {
-    for (let i = 0; i < poses.length; i++) {
-      let pose = poses[i];
-      for (let j = 0; j < pose.keypoints.length; j++) {
-        let kp = pose.keypoints[j];
-        if (kp.confidence > 0.5) {
-          fill(0, 255, 0);
-          noStroke();
-          ellipse(kp.x, kp.y, 8, 8);
-        }
+function drawKeypoints() {
+  for (let i = 0; i < poses.length; i++) {
+    let pose = poses[i];
+    for (let j = 0; j < pose.keypoints.length; j++) {
+      let kp = pose.keypoints[j];
+      if (kp.confidence > 0.5) {
+        fill(0, 255, 0);
+        noStroke();
+        ellipse(kp.x, kp.y, 8, 8);
       }
     }
   }
+}
 
-  function drawKeypoints() {
-    for (let i = 0; i < poses.length; i++) {
-      let pose = poses[i];
-      for (let j = 0; j < pose.keypoints.length; j++) {
-        let kp = pose.keypoints[j];
-        if (kp.confidence > 0.5) {
-          fill(0, 255, 0);
-          noStroke();
-          ellipse(kp.x, kp.y, 8, 8);
-        }
-      }
-    }
-  }
-  
-  function mousePressed() {
-    Tone.start();
-    console.log("Audio context started");
-  }
+// 点击画布启动声音上下文
+function mousePressed() {
+  Tone.start();
+  console.log("Audio context started");
+}
