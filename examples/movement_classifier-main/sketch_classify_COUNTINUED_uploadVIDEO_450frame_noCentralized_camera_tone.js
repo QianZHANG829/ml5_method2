@@ -378,7 +378,7 @@ function predictPose() {
  * newPlayer 作为新曲目，在淡入的同时对当前正在播放的音乐（currentPlayer）进行淡出
  * fadeDuration 为交叉混合时间，单位为秒
  */
-function crossfadePlayers(newPlayer, fadeDuration = 2) {
+function crossfadePlayers(newPlayer, fadeDuration = 3) {
   let now = Tone.now();
   
   // 保存旧播放器引用
