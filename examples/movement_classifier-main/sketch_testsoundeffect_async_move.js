@@ -10,12 +10,14 @@ const metalPitchShift = new Tone.PitchShift(0).connect(reverb).connect(delay).to
 const ambientPlayer = new Tone.Player({
   url: "music/async/ambient_experimental.wav",
   loop: true,
-  volume: -5
+  volume: -8
 }).connect(reverb).connect(delay).toDestination();
 
 // 修改metalPlayer的定义，将metalPlayer连接到metalPitchShift节点
 const metalPlayer = new Tone.Player("music/async/metal-bowl-hit.wav")
   .connect(metalPitchShift);
+  metalPlayer.volume.value = -10;  // 🔊 设置 metal 声音的音量
+
 
 // 创建多个piano声音的数组
 const pianoSounds = [
@@ -33,6 +35,7 @@ const pianoSettings = {
 
 const pianoPlayers = pianoSounds.map(url => {
   const player = new Tone.Player(url).connect(globalPitchShift);
+  player.volume.value = -10; // 🔊 设置每个 piano 声音的音量
   return player;
 });
 
@@ -45,8 +48,8 @@ let pianoTimeout;
 let isPlaying = false;
 
 // Thresholds
-const MOVEMENT_THRESHOLD = 1100;
-const ACCELERATION_THRESHOLD = 100;
+const MOVEMENT_THRESHOLD = 800;
+const ACCELERATION_THRESHOLD = 80;
 
 
 
