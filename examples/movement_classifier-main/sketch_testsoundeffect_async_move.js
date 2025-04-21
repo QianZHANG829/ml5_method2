@@ -171,6 +171,9 @@ function calculateAcceleration(curr, prev) {
   return dist(0, 0, dx, dy);
 }
 
+
+
+
 // Start audio playback
 async function startPlaying() {
   if (isPlaying) return;
