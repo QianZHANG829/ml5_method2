@@ -10,9 +10,10 @@ let isPlaying = false;
 
 // === THRESHOLDS (全局阈值一览) ===
 const ACCELERATION_THRESHOLD = 80;  // 左手触发钢琴
-const FALLING_THRESHOLD      = 60;  // 下坠判定
+const FALLING_THRESHOLD      = 80;  // 下坠判定
 const EXTENSION_THRESHOLD    = 100; // 腿/脚延伸
-const COOLDOWN_TIME          = 1000; // 冷却 (ms)
+const COOLDOWN_TIME          = 2000; // 冷却 (ms)
+const SPIN_THREASHOLD        = 60; //旋转
 
 
 
@@ -184,7 +185,7 @@ function initLayer3() {
 
   pianoPlayers = pianoSounds.map(url => {
     const player = new Tone.Player(url).connect(globalPitchShift);
-    player.volume.value = -30;
+    player.volume.value = -20;
     return player;
   });
 
@@ -231,7 +232,7 @@ function detectRotationFacingFront(pose) {
 
   // 3) 满足三个条件才触发：
   //    a) 最近 4 帧出现正负翻转 (signFlip)
-  //    b) 幅度变化 Δ 大于阈值 0.2
+  //    b) 幅度变化 Δ 大于阈值 
   //    c) 距离上次触发已超过冷却时间
   if (shoulderDiffHistory.length >= 4) {
     const recent = shoulderDiffHistory.slice(-4);
@@ -239,7 +240,7 @@ function detectRotationFacingFront(pose) {
     const delta    = Math.abs(recent[3] - recent[0]);
     const now      = millis();
 
-    if (signFlip && delta > 0.2 && now - lastRotationTriggerTime > COOLDOWN_TIME) {
+    if (signFlip && delta > SPIN_THREASHOLD && now - lastRotationTriggerTime > COOLDOWN_TIME) {
       // 4) 设置随机混响并播放 A#4
       rotVerb.decay = random(6, 12);
       rotVerb.wet   = random(0.4, 0.8);
@@ -319,7 +320,12 @@ function gotPoses(results) {
   const wrist = pose.keypoints.find(k => k.name === 'left_wrist');
   if (wrist && lastLeftWrist) {
     const accel = calculateAcceleration(wrist, lastLeftWrist);
-    if (accel > ACCELERATION_THRESHOLD) playMetalSoundRandomly();
+    if (accel > ACCELERATION_THRESHOLD) {
+      console.log(`🎹 Piano‑hit accel = ${accel.toFixed(1)} (TH ${ACCELERATION_THRESHOLD})`);
+      playMetalSoundRandomly();
+
+    }
+
   }
   lastLeftWrist = wrist;
 }
