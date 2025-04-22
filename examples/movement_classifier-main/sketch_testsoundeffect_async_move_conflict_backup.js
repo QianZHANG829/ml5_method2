@@ -4,7 +4,7 @@
 
 // ——— 全局常量 ———
 const MOVEMENT_THRESHOLD = 6;    // px/s 触发
-const MAX_SPEED          = 1500;   // px/s 正常上界 (排练后可调)
+const MAX_SPEED = 1200;   // px/s 正常上界 (排练后可调)
 const SPEED_MIN = 0,  SPEED_MAX = 800;   // 映射区间
 const INT_MIN   = 1,  INT_MAX   = 0.25;  // s (1s → 0.25s)
 
@@ -12,14 +12,18 @@ let video, bodyPose, poses = [], prevPose = null, prevTime = 0;
 let isPlaying = false;               // 键 2 / 1 控制
 let drumsLive = false;               // 是否已开鼓
 let currN     = 0.3;                 // 强度 0‑1
+let drums = {};
 let drumLoop;                        // Tone.Loop ref
+let rimPlayer;   // 放在 drums 旁边声明
+let rimReady = false;  // 是否已加载 rimshot
+
 
 // =====================
 // 🎵 Layer 1 – Ambient Pad
 // =====================
 let ambientPlayer;
 function initLayer1(){
-  const reverb = new Tone.Reverb({decay:6, wet:0.8});
+  const reverb = new Tone.Reverb({decay:6, wet:0.5});
   const delay  = new Tone.FeedbackDelay({delayTime:"8n", feedback:0.6, wet:0.4});
   ambientPlayer = new Tone.Player({
     url:"music/async/ambient_tension.wav", loop:true, volume:-8
@@ -29,37 +33,69 @@ function initLayer1(){
 // =====================
 // 🥁 Layer 2 – Drums
 // =====================
-let drums = {};
+
 function initLayer2(){
-  const drumReverb = new Tone.Reverb({ decay: 4, preDelay: 0.01, wet: 0.6 });
-  const drumDelay  = new Tone.FeedbackDelay({ delayTime: "8n", feedback: 0.3, wet: 0.2 });
-
-  // drums = {
-  //   soft : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_pianissimo_struck-singly.mp3").toDestination(),
-  //   mid  : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_mezzo-piano_struck-singly.mp3").toDestination(),
-  //   hard : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3").toDestination()
-  // };
-
   drums = {
-    soft : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_pianissimo_struck-singly.mp3")
-              .chain(drumReverb, drumDelay, Tone.Destination),
-    mid  : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_mezzo-piano_struck-singly.mp3")
-              .chain(drumReverb, drumDelay, Tone.Destination),
-    hard : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3")
-              .chain(drumReverb, drumDelay, Tone.Destination)
+    soft : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_pianissimo_struck-singly.mp3").toDestination(),
+    mid  : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_mezzo-piano_struck-singly.mp3").toDestination(),
+    hard : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3").toDestination()
   };
-
   Object.values(drums).forEach(p=>p.volume.value=-20);
 
+  // // Rim 叠加金属音
+  // rimPlayer = new Tone.Player({
+  //   url : "music/all-samples/percussion/bass-percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3",
+  //   onload : () => {           // 文件读完时触发
+  //     rimReady = true;
+  //     console.log("✅ rim sample loaded");
+  //   }
+  // }).toDestination();
+  // rimPlayer.volume.value = -24;
+  
+
+  //sound effect
+  // /* === FX 链 === */
+  drumBus   = new Tone.Gain().toDestination();                        // 总线
+
+  verbSend  = new Tone.Gain(0).connect( new Tone.Reverb({decay:5, wet:0.9}) ).connect(drumBus);
+  distSend  = new Tone.Gain(0).connect( new Tone.Distortion(0.25) ).connect(drumBus);
+  comp      = new Tone.Compressor({threshold:-20, ratio:4}).connect(drumBus);
+
+  // 三只鼓 → Compressor（干声）+ 发送至 FX
+  Object.values(drums).forEach(p=>{
+  p.connect(comp);
+  p.connect(verbSend);
+  p.connect(distSend);
+  });
+
+  
   // 持续 Loop：先静音、间隔 1 s
   drumLoop = new Tone.Loop(t=>playDrumAtTime(currN,t), 1).start(0);
   drumLoop.mute = true;
 }
-function playDrumAtTime(intensity,t){
-  const kit = intensity<0.33 ? "soft": intensity<0.66 ? "mid":"hard";
-  drums[kit].volume.value = -20 + intensity*18;  // -20 → -2 dB
+
+function playDrumAtTime(intensity, t){
+  // 抖动力度
+  let n = intensity;
+  if(Math.random()<0.3) n*=0.25;
+
+  // 选样本 & 干音量
+  const kit = n<0.33? "soft" : n<0.66? "mid":"hard";
+  drums[kit].volume.value = -26 + n*22;
+
   drums[kit].start(t);
+
+  /* === 动态 FX === */
+  verbSend.gain.value = 0.5 + 2 * Math.pow(n,1.8);
+
+
+  // 失真：只给中高强度
+  const distAmt = n<0.4? 0 : (n-0.4)/0.6;   // 0→1
+  distSend.gain.value = n < 0.4 ? 0 : (n-0.4)*2.5;
+  
 }
+
+
 
 // =====================
 // 🔔 Layer 3 – Sparse Chimes
@@ -149,7 +185,8 @@ function gotPoses(res){
 async function startPlaying(){
   if(isPlaying) return;
   isPlaying=true;
-  await Tone.start(); await Tone.loaded();
+  await Tone.start(); 
+  await Tone.loaded();
   Tone.Transport.start("+0.1");
   ambientPlayer.start();
   console.log("▶️ Start");
@@ -188,5 +225,3 @@ function keyPressed(){
 
 // utils
 function random(a,b){return a+Math.random()*(b-a);}
-
-

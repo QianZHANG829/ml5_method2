@@ -1,22 +1,24 @@
 // =====================
-// 🎼 Conflict & Tension – Full Sketch
+// 🎼 Conflict & Tension – Full Sketch (with 16-beat adaptive drum loop)
 // =====================
 
 // ——— 全局常量 ———
-const MOVEMENT_THRESHOLD = 6;    // px/s 触发
-const MAX_SPEED          = 12;   // px/s 正常上界 (排练后可调)
-const SPEED_MIN = 0,  SPEED_MAX = 800;   // 映射区间
-const INT_MIN   = 1,  INT_MAX   = 0.25;  // s (1s → 0.25s)
+const MOVEMENT_THRESHOLD = 6;
+const MAX_SPEED = 1200;
+const SPEED_MIN = 0, SPEED_MAX = 800;
+const INT_MIN = 1, INT_MAX = 0.25;
 
 let video, bodyPose, poses = [], prevPose = null, prevTime = 0;
-let isPlaying = false;               // 键 2 / 1 控制
-let drumsLive = false;               // 是否已开鼓
-let currN     = 0.3;                 // 强度 0‑1
-let drumLoop;                        // Tone.Loop ref
+let isPlaying = false;
+let drumsLive = false;
+let currN = 0.3;
 
-// =====================
-// 🎵 Layer 1 – Ambient Pad
-// =====================
+let drums = {}, drumPart;
+let drumInterval = 0.5;
+let drumVolume = -10;
+let speedHistory = [];
+
+// 🎵 Layer 1 – Ambient Pad
 let ambientPlayer;
 function initLayer1(){
   const reverb = new Tone.Reverb({decay:6, wet:0.5});
@@ -26,31 +28,33 @@ function initLayer1(){
   }).chain(reverb, delay, Tone.Destination);
 }
 
-// =====================
-// 🥁 Layer 2 – Drums
-// =====================
-let drums = {};
+// 🥁 Layer 2 – Drums with Adaptive Loop
 function initLayer2(){
+  const reverb = new Tone.Reverb({ decay: 4, preDelay: 0.01, wet: 0.6 });
+  const echo   = new Tone.FeedbackDelay({ delayTime: "8n", feedback: 0.5, wet: 0.4 });
+
   drums = {
-    soft : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_pianissimo_struck-singly.mp3").toDestination(),
-    mid  : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_mezzo-piano_struck-singly.mp3").toDestination(),
-    hard : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3").toDestination()
+    hard : new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_mezzo-piano_struck-singly.mp3")
+              .chain(reverb, echo, Tone.Destination)
   };
-  Object.values(drums).forEach(p=>p.volume.value=-20);
+  drums.hard.volume.value = drumVolume;
 
-  // 持续 Loop：先静音、间隔 1 s
-  drumLoop = new Tone.Loop(t=>playDrumAtTime(currN,t), 1).start(0);
-  drumLoop.mute = true;
-}
-function playDrumAtTime(intensity,t){
-  const kit = intensity<0.33 ? "soft": intensity<0.66 ? "mid":"hard";
-  drums[kit].volume.value = -20 + intensity*18;  // -20 → -2 dB
-  drums[kit].start(t);
+  let notes = Array(16).fill(0).map((_, i) => [i * drumInterval, "C1"]);
+  drumPart = new Tone.Part((time, note) => {
+    drums.hard.volume.value = drumVolume;
+    drums.hard.start(time);
+
+    console.log(`🥁 DRUM HIT @ ${time.toFixed(2)} | volume: ${drumVolume.toFixed(1)} dB`);
+
+
+  }, notes).start(0);
+
+  drumPart.loop = true;
+  drumPart.loopEnd = `${16 * drumInterval}`;
+  drumPart.mute = true;
 }
 
-// =====================
-// 🔔 Layer 3 – Sparse Chimes
-// =====================
+// 🔔 Layer 3 – Sparse Chimes
 let afterFX;
 function initLayer3(){
   const files = [
@@ -66,17 +70,30 @@ function initLayer3(){
   function playChime(){
     new Tone.Player({url:files[int(random(files.length))],autostart:true,volume:-12})
       .connect(hpf);
-    setTimeout(playChime, random(20000,30000));   // 20–30 s
+    setTimeout(playChime, random(20000,30000));
   }
   setTimeout(()=>{
     afterFX.gain.linearRampTo(0.6,5);
     playChime();
-  }, 30000);   // 30 s 后淡入
+  }, 30000);
 }
 
-// =================================
+// 🧠 Update Drum Pattern from Motion
+function updateDrumPatternFromSpeed(speeds){
+  const avgSpeed = speeds.reduce((a,b)=>a+b,0) / speeds.length;
+  drumInterval = mapVal(avgSpeed, SPEED_MIN, SPEED_MAX, 1, 0.25);
+  drumVolume   = mapVal(avgSpeed, SPEED_MIN, SPEED_MAX, -20, -2);
+
+  drumPart.clear();
+  let newNotes = Array(16).fill(0).map((_, i) => [i * drumInterval, "C1"]);
+  newNotes.forEach(n => drumPart.add(n));
+  drumPart.loopEnd = `${16 * drumInterval}`;
+
+  const bpm = 60 / drumInterval;
+  console.log(`🥁 UPDATE loop: ${bpm.toFixed(1)} BPM | interval=${drumInterval.toFixed(2)}s | volume=${drumVolume.toFixed(1)} dB`);
+}
+
 // 🧠 Motion – helpers
-// =================================
 function calculateMovementIntensity(curr, prev){
   const idx = [11,12,13,14,15,16,23,24];
   let total = 0;
@@ -91,12 +108,10 @@ function mapVal(v,in0,in1,out0,out1){
   return out0 + (v-in0)*(out1-out0)/(in1-in0);
 }
 
-// =====================
 // 🔄 Pose callback
-// =====================
 function gotPoses(res){
   poses = res;
-  if(!isPlaying||!res.length) return;
+  if(!isPlaying || !res.length) return;
 
   const curr = res[0];
   if(!prevPose){
@@ -106,36 +121,32 @@ function gotPoses(res){
 
   const now = millis();
   const dt  = Math.max((now-prevTime)/1000, 0.001);
-  const disp  = calculateMovementIntensity(curr, prevPose);  // px
-  const speed = disp/dt;                                     // px/s
-
-  // 强度 n 用速度归一化
+  const disp  = calculateMovementIntensity(curr, prevPose);
+  const speed = disp/dt;
   currN = constrain((speed-MOVEMENT_THRESHOLD)/(MAX_SPEED-MOVEMENT_THRESHOLD),0,1);
 
-  // 第一次超阈值 → 打开鼓
-  if(!drumsLive && speed> MOVEMENT_THRESHOLD){
-    drumLoop.mute=false; drumsLive=true;
-  }
-
-  // 鼓已响 → 用速度映射间隔
   if(drumsLive){
-    const newInt = mapVal(constrain(speed,SPEED_MIN,SPEED_MAX),
-                          SPEED_MIN, SPEED_MAX, INT_MIN, INT_MAX);
-    drumLoop.interval = newInt;   // 立即生效
+    speedHistory.push(speed);
+    if(speedHistory.length >= 16){
+      updateDrumPatternFromSpeed(speedHistory);
+      speedHistory = [];
+    }
+  } else if (speed > MOVEMENT_THRESHOLD) {
+    drumsLive = true;
+    drumPart.mute = false;
+    speedHistory.push(speed);
   }
 
-  // 调试输出
-  if(frameCount%10===0) console.log(`spd:${speed.toFixed(1)}  n:${currN.toFixed(2)}  int:${drumLoop.interval.toFixed(2)}s`);
+  if(frameCount % 10 === 0)
+    console.log(`📉 Speed: ${speed.toFixed(1)} | n: ${currN.toFixed(2)}`);
 
-  prevPose = curr; prevTime=now;
+  prevPose = curr; prevTime = now;
 }
 
-// =====================
 // 🎬 Play / Stop
-// =====================
 async function startPlaying(){
   if(isPlaying) return;
-  isPlaying=true;
+  isPlaying = true;
   await Tone.start(); await Tone.loaded();
   Tone.Transport.start("+0.1");
   ambientPlayer.start();
@@ -143,23 +154,22 @@ async function startPlaying(){
 }
 function stopPlaying(){
   if(!isPlaying) return;
-  isPlaying=false;
+  isPlaying = false;
   ambientPlayer.stop();
-  Object.values(drums).forEach(p=>p.stop());
+  drums.hard.stop();
   Tone.Transport.stop();
-  drumLoop.mute=true; drumsLive=false;
+  drumPart.mute = true;
+  drumsLive = false;
+  speedHistory = [];
   console.log("⏹ Stop");
 }
 
-// =====================
 // 🖼️ p5 setup / draw
-// =====================
 function preload(){ bodyPose=ml5.bodyPose('BlazePose'); }
 function setup(){
   createCanvas(640,480);
   video=createCapture(VIDEO); video.size(640,480); video.hide();
   bodyPose.detectStart(video, gotPoses);
-
   initLayer1(); initLayer2(); initLayer3();
 }
 function draw(){
@@ -175,3 +185,4 @@ function keyPressed(){
 
 // utils
 function random(a,b){return a+Math.random()*(b-a);}
+function int(x){return Math.floor(x);}
