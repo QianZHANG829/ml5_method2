@@ -8,7 +8,7 @@ let video, bodyPose, latestPose;
 let prevTheta = null, prevTime = null;
 const SHAKE_THRESHOLD   = 500;   // 上阈值（deg/s）
 const RELEASE_THRESHOLD = 400;   // 下阈值
-const CONTRACT_ON=0.25;
+const CONTRACT_ON=0.30;
 const CONTRACT_OFF=0.15;	
 let shaking = false;
 let lastNote = null;
@@ -19,35 +19,30 @@ let contracting=false;
 
 // ─────────── Tone.js 初始化 ────────────
 /* ───────── Tone.js ───────── */
-const pan  = new Tone.Panner();      // 输出先给 pan
-
-
-pan.toDestination();                 // 最终输出
-
+const pan = new Tone.Panner().toDestination();      // 立体声位置
 const verb = new Tone.Reverb({decay:1.2, wet:0.3}).toDestination();
+const cymPlayer = new Tone.Player(
+  "music/all-samples/percussion/clash cymbals/clash-cymbals__15_fortissimo_struck-together.mp3"
+).connect(verb);     // ※ 只建一次
 
-
-const pont = new Tone.Sampler({
-    urls:{
-      G3:"music/all-samples/violin/violin_G3_1_piano_arco-sul-ponticello.mp3",
-      D4:"music/all-samples/violin/violin_D4_1_piano_arco-sul-ponticello.mp3",
-      F4:"music/all-samples/violin/violin_F4_1_piano_arco-sul-ponticello.mp3",
-      G4:"music/all-samples/violin/violin_G4_1_piano_arco-sul-ponticello.mp3",
-      E4:"music/all-samples/violin/violin_E4_1_piano_arco-sul-ponticello.mp3",
-      C5:"music/all-samples/violin/violin_C5_1_piano_arco-sul-ponticello.mp3",
-    },
-    release: 2,
-  }).toDestination();
+const pont = new Tone.Sampler({ 
+  urls:{
+    G3:"music/all-samples/violin/violin_G3_1_piano_arco-sul-ponticello.mp3",
+    D4:"music/all-samples/violin/violin_D4_1_piano_arco-sul-ponticello.mp3",
+    F4:"music/all-samples/violin/violin_F4_1_piano_arco-sul-ponticello.mp3",
+    G4:"music/all-samples/violin/violin_G4_1_piano_arco-sul-ponticello.mp3",
+    E4:"music/all-samples/violin/violin_E4_1_piano_arco-sul-ponticello.mp3",
+    C5:"music/all-samples/violin/violin_C5_1_piano_arco-sul-ponticello.mp3",
+  },
   
-  pont.connect(pan);
+  release:2 }).connect(pan);
   
   const PONT_NOTES = ["G3","D4","F4","G4","E4","C5"];
   
 // ⚡ 加在脚本顶部采样区
 const hitBD = new Tone.Player(
-    "music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3"
-  ).toDestination();
-
+  "music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3"
+).connect(verb);
   
 
   // ─────────── Sad-Pad 单音循环 ────────────
@@ -99,30 +94,17 @@ const hitBD = new Tone.Player(
 
 
     function onContractionStart(intensity = 1){
-        // intensity 取 0–1，可直接用肩宽收缩比例
-        // 随强度映射音量 (−8 dB 到 0 dB)
-        hitBD.volume.value = Tone.gainToDb(0.4 + 0.6*intensity);
-      
-        // 随机轻微变速，避免每次听起来完全一样
-        hitBD.playbackRate = 0.95 + Math.random()*0.1;
-      
-        // 可选：加一点极短 Reverb 提升空间感
-        const verb = new Tone.Reverb({decay:1.2, wet:0.3}).toDestination();
-        hitBD.connect(verb);
-        
-        // 可选：在收缩幅度 > 0.8 时，再叠一个 clash cymbal：
-        if(intensity > 0.8){
-            const cym = new Tone.Player(
-            "music/all-samples/percussion/clash cymbals/clash-cymbals__15_fortissimo_struck-together.mp3"
-            ).toDestination();
-            cym.volume.value = Tone.gainToDb(-10); // 控制别盖住低鼓
-            cym.start("+0.02");  // 稍滞后混合
-        }
+      hitBD.volume.value = -8 + 8 * intensity;        // -8 dB → 0 dB
+      hitBD.playbackRate = 0.9 + Math.random()*0.2;   // 轻抖速率
+      hitBD.start();
   
 
-        hitBD.start();
+      if(intensity > 0.8){
+        cymPlayer.volume.value = -10;
+        cymPlayer.start("+0.02");      // 安全：buffer 已经加载
       }
-      
+    }
+    
       
 
 
@@ -224,27 +206,40 @@ function shortestAngleDiff(a2,a1){
 
 
 /* ─── 含胸 ─── */
-function detectContraction(){
-    if(!latestPose||!baseShoulder) return;
-    const l=kp("left_shoulder"),r=kp("right_shoulder");
-    if(!l||!r) return;
-    const delta= baseShoulder - Math.abs(l.x-r.x);
-    const intensity = Math.max(0, Math.min(delta/(baseShoulder*0.4), 1));
-  
-    if(!contracting && intensity>CONTRACT_ON){
-        contracting=true; 
-        onContractionStart(intensity);
-        console.log("👹 Contract DETECTED!", intensity.toFixed(1));
+/* ─── 含胸检测 ─── */
+let lastContractTime = 0;          // 冷却计时
+const CONTRACT_COOLDOWN = 400;     // ms
 
-    }else if(contracting && intensity<CONTRACT_OFF){
-        contracting=false;
-    }
-  
-    /* 可选：在屏幕左上角实时显示强度 */
-    fill(255,0,0); noStroke();
-    text(`Contraction: ${(intensity*100).toFixed(0)}%`,10,20);
+function detectContraction(){
+  if(!latestPose || baseRatio === null) return;
+
+  const lS = kp("left_shoulder"), rS = kp("right_shoulder");
+  const neck = kp("left_shoulder");
+  const midHip = kp("right_hip");
+  if(!lS || !rS || !neck || !midHip) return;
+
+  const shoulder   = Math.abs(lS.x - rS.x);
+  const torsoLen   = Math.abs(neck.y - midHip.y);
+  if(torsoLen < 1) return;
+
+  const currRatio  = shoulder / torsoLen;          // 0.0 ~ 1.0
+  const intensity  = Math.max(0, Math.min((baseRatio - currRatio) / 0.4, 1));
+
+  // —— 冷却触发逻辑 ——
+  const now = performance.now();
+  if(intensity >= CONTRACT_ON && now - lastContractTime > CONTRACT_COOLDOWN){
+    onContractionStart(intensity);
+    lastContractTime = now;
+    console.log("👹 Contract DETECTED!", intensity.toFixed(2));
   }
-  
+
+  // HUD
+  fill(255,0,0); 
+  noStroke();
+  textSize(50);
+  text(`Con: ${(intensity*100).toFixed(0)}%`, 10, 50);
+}
+
   /* ─── 工具 ─── */
   /* ─── 工具函数：返回关键点对象 ─── */
   function kp(label){
@@ -255,16 +250,32 @@ function detectContraction(){
 
 
 /* ─── 标定肩宽 ─── */
+/* ─── 标定肩宽比例 ─── */
+let baseRatio = null;   // (shoulderDist / torsoLen) 基准
+
 function calibrate(){
-    let sum=0,c=0;
-    const id=setInterval(()=>{
-      if(latestPose){
-        const l=kp("left_shoulder"), r=kp("right_shoulder");
-        if(l&&r){ sum+=Math.abs(l.x-r.x); c++; }
+  let sum = 0, c = 0;
+  const id = setInterval(()=>{
+    if(latestPose){
+      const lS = kp("left_shoulder"), rS = kp("right_shoulder");
+      const neck = kp("left_shoulder");            // 用左肩 y 当 neck
+      const midHip = kp("right_hip");              // 用右髋 y 当 midHip
+      if(lS && rS && neck && midHip){
+        const shoulder = Math.abs(lS.x - rS.x);
+        const torsoLen = Math.abs(neck.y - midHip.y);
+        if(torsoLen > 1){
+          sum += shoulder / torsoLen;
+          c++;
+        }
       }
-      if(c>=30){ baseShoulder=sum/c; clearInterval(id); }
-    },33);
-  }
+    }
+    if(c >= 30){               // 采 30 帧
+      baseRatio = sum / c;
+      console.log("✅ shoulder/torso 基准 =", baseRatio.toFixed(3));
+      clearInterval(id);
+    }
+  }, 33);
+}
 
   /* ─── 每 2 秒打印当前角速度 & 收缩强度 ─── */
 setInterval(()=>{
@@ -282,14 +293,16 @@ setInterval(()=>{
     }
   }
 
-  if(baseShoulder){
-    const l=kp("left_shoulder"), r=kp("right_shoulder");
-    if(l&&r){
-      const delta = baseShoulder - Math.abs(l.x-r.x);
-      const intensity = Math.max(0, Math.min(delta/(baseShoulder*0.4),1));
-      info.contraction = (intensity*100).toFixed(0)+'%';
+  if(baseRatio !== null){
+    const l=kp("left_shoulder"), r=kp("right_shoulder"),
+          neck=kp("left_shoulder"), hip=kp("right_hip");
+    if(l&&r&&neck&&hip){
+      const ratio = Math.abs(l.x-r.x) / Math.abs(neck.y-hip.y);
+      const inten = Math.max(0, Math.min((baseRatio - ratio)/0.4, 1));
+      info.contraction = (inten*100).toFixed(0)+'%';
     }
   }
+  
 
   console.log('[DEBUG]', info);
 }, 2000);
