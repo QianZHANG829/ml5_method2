@@ -10,7 +10,7 @@ const SHAKE_THRESHOLD   = 500;   // 上阈值（deg/s）
 const RELEASE_THRESHOLD = 400;   // 下阈值
 const CONTRACT_ON=0.30;
 const CONTRACT_OFF=0.15;	
-const HEAD_DROP_RATIO = 0.08;   // 低头阈值 ≈ 躯干长度 8%
+const HEAD_DROP_RATIO = 0.05;   // 低头阈值 ≈ 躯干长度 8%
 
 
 
