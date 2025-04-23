@@ -8,6 +8,8 @@ let video, bodyPose, latestPose;
 let prevTheta = null, prevTime = null;
 const SHAKE_THRESHOLD   = 500;   // 上阈值（deg/s）
 const RELEASE_THRESHOLD = 400;   // 下阈值
+const CONTRACT_ON=0.25;
+const CONTRACT_OFF=0.15;	
 let shaking = false;
 let lastNote = null;
 
@@ -16,6 +18,15 @@ let baseShoulder = null;      // 进入后自动标定
 let contracting=false;
 
 // ─────────── Tone.js 初始化 ────────────
+/* ───────── Tone.js ───────── */
+const pan  = new Tone.Panner();      // 输出先给 pan
+
+
+pan.toDestination();                 // 最终输出
+
+const verb = new Tone.Reverb({decay:1.2, wet:0.3}).toDestination();
+
+
 const pont = new Tone.Sampler({
     urls:{
       G3:"music/all-samples/violin/violin_G3_1_piano_arco-sul-ponticello.mp3",
@@ -28,7 +39,6 @@ const pont = new Tone.Sampler({
     release: 2,
   }).toDestination();
   
-  const pan  = new Tone.Panner().toDestination(); // ← 只建一次
   pont.connect(pan);
   
   const PONT_NOTES = ["G3","D4","F4","G4","E4","C5"];
@@ -132,6 +142,8 @@ function setup(){
   
     // ⚠️ 不再在这里解锁音频；等待用户按键
     console.log("按键 2 开启音频并进入 Sad Pad …");
+    calibrate();   // 自动标定肩宽
+  
   }
   
   function keyPressed(){
@@ -152,9 +164,14 @@ function draw(){
 }
 
 // ────── Pose 回调 ──────
-function gotPoses(results, err){
-  if(err){console.error(err);return;}
-  if(results && results.length>0) latestPose = results[0];
+function gotPoses(results){
+  poses = results;
+  if (results.length === 0) return;
+
+  if(results.length){
+    if(!latestPose) calibrate();   // 第一次拿到姿态时开始标定
+    latestPose = results[0];
+  }
 }
 
 // ────── 绿色关键点 ──────
@@ -215,7 +232,10 @@ function detectContraction(){
     const intensity = Math.max(0, Math.min(delta/(baseShoulder*0.4), 1));
   
     if(!contracting && intensity>CONTRACT_ON){
-        contracting=true; onContractionStart(intensity);
+        contracting=true; 
+        onContractionStart(intensity);
+        console.log("👹 Contract DETECTED!", intensity.toFixed(1));
+
     }else if(contracting && intensity<CONTRACT_OFF){
         contracting=false;
     }
@@ -226,7 +246,12 @@ function detectContraction(){
   }
   
   /* ─── 工具 ─── */
-  function kp(name){ return latestPose.keypoints.find(k=>k.part===name); }
+  /* ─── 工具函数：返回关键点对象 ─── */
+  function kp(label){
+    return latestPose.keypoints.find(k=>{
+      return (k.name && k.name===label) || (k.part && k.part===label);
+    });
+  }
 
 
 /* ─── 标定肩宽 ─── */
@@ -240,3 +265,31 @@ function calibrate(){
       if(c>=30){ baseShoulder=sum/c; clearInterval(id); }
     },33);
   }
+
+  /* ─── 每 2 秒打印当前角速度 & 收缩强度 ─── */
+setInterval(()=>{
+  // 角速度（若上一帧已算出 wDeg，可存在全局；否则读取 shaking state）
+  const info = {};
+
+  if(prevTheta!==null && prevTime!==null && latestPose){
+    const nose = kp("nose"), l=kp("left_shoulder"), r=kp("right_shoulder");
+    if(nose&&l&&r){
+      const neck = {x:(l.x+r.x)/2, y:(l.y+r.y)/2};
+      const theta = Math.atan2(nose.y-neck.y,nose.x-neck.x);
+      const dt = (performance.now()-prevTime)/1000;
+      const wDeg = Math.abs((theta-prevTheta)/dt*180/Math.PI);
+      info.wDeg = wDeg.toFixed(0);
+    }
+  }
+
+  if(baseShoulder){
+    const l=kp("left_shoulder"), r=kp("right_shoulder");
+    if(l&&r){
+      const delta = baseShoulder - Math.abs(l.x-r.x);
+      const intensity = Math.max(0, Math.min(delta/(baseShoulder*0.4),1));
+      info.contraction = (intensity*100).toFixed(0)+'%';
+    }
+  }
+
+  console.log('[DEBUG]', info);
+}, 2000);
