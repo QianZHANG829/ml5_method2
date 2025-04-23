@@ -10,6 +10,10 @@ const SHAKE_THRESHOLD   = 500;   // 上阈值（deg/s）
 const RELEASE_THRESHOLD = 400;   // 下阈值
 const CONTRACT_ON=0.30;
 const CONTRACT_OFF=0.15;	
+const HEAD_DROP_RATIO = 0.08;   // 低头阈值 ≈ 躯干长度 8%
+
+
+
 let shaking = false;
 let lastNote = null;
 
@@ -20,14 +24,14 @@ let contracting=false;
 let audioReady = false;          // ← 新增，全局
 
 
+
 // ─────────── Tone.js 初始化 ────────────
 /* ───────── Tone.js ───────── */
 const pan = new Tone.Panner().toDestination();      // 立体声位置
 const verb = new Tone.Reverb({decay:1.2, wet:0.3}).toDestination();
 const cymPlayer = new Tone.Player(
-  "music/all-samples/percussion/clash-cymbals/suspended-cymbal__1_forte_scraped.mp3"
+  "music/all-samples/percussion/suspended-cymbal/suspended-cymbal__1_forte_scraped.mp3"
 ).connect(verb);     // ※ 只建一次
-console.log('cymPlayer.loaded', cymPlayer.loaded);
 
 const pont = new Tone.Sampler({ 
   urls:{
@@ -40,7 +44,6 @@ const pont = new Tone.Sampler({
   },
   
   release:2 }).connect(pan);
-  console.log('pont.loaded', pont.loaded);
 
   
   const PONT_NOTES = ["G3","D4","F4","G4","E4","C5"];
@@ -50,7 +53,6 @@ const hitBD = new Tone.Player(
   "music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3"
   
 ).connect(verb);
-  console.log('hitBD.loaded', hitBD.loaded);
 
 
 
@@ -141,14 +143,12 @@ function setup(){
   }
   
   function keyPressed(){
-    if(key === '2'){
-      Tone.start().then(async ()=>{
-        const waitPont = new Promise(res => pont.onload  = res);
-        const waitHit  = new Promise(res => hitBD.onload = res);
-        const waitCym  = new Promise(res => cymPlayer.onload = res);
-        await Promise.all([waitPont, waitHit, waitCym]);
-        console.log("✅ 全部采样已加载");
-        audioReady = true;         // ← 只有这时才允许发声
+    if (key === '2'){
+      Tone.start().then(()=>{                     // 解锁 AudioContext
+        Tone.loaded().then(()=>{                 // 等全部 Buffer OK
+          console.log('✅ 全部采样已加载');
+          audioReady = true;                     // 现在才允许发声
+        });
       });
     }
   }
@@ -235,21 +235,29 @@ function detectContraction(){
   const lS = kp("left_shoulder"), rS = kp("right_shoulder");
   const neck = kp("left_shoulder");
   const midHip = kp("right_hip");
+  const nose =kp("nose");
   if(!lS || !rS || !neck || !midHip) return;
 
   const shoulder   = Math.abs(lS.x - rS.x);
   const torsoLen   = Math.abs(neck.y - midHip.y);
+
   if(torsoLen < 1) return;
 
   const currRatio  = shoulder / torsoLen;          // 0.0 ~ 1.0
   const intensity  = Math.max(0, Math.min((baseRatio - currRatio) / 0.4, 1));
 
+  const headDrop = (nose.y - neck.y) / torsoLen;   // 正值 = 向下
+  const headLow  = headDrop >= HEAD_DROP_RATIO;
+
+
   // —— 冷却触发逻辑 ——
   const now = performance.now();
-  if(intensity >= CONTRACT_ON && now - lastContractTime > CONTRACT_COOLDOWN){
-    onContractionStart(intensity);
-    lastContractTime = now;
-    console.log("👹 Contract DETECTED!", intensity.toFixed(2));
+  if(intensity >= CONTRACT_ON && headLow &&
+    now - lastContractTime > CONTRACT_COOLDOWN){
+
+      onContractionStart(intensity);
+      lastContractTime = now;
+      console.log("👹 Contract DETECTED!", intensity.toFixed(2));
   }
 
   // HUD
