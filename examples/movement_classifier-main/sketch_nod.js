@@ -17,13 +17,17 @@ let lastNote = null;
 let baseShoulder = null;      // 进入后自动标定
 let contracting=false;
 
+let audioReady = false;          // ← 新增，全局
+
+
 // ─────────── Tone.js 初始化 ────────────
 /* ───────── Tone.js ───────── */
 const pan = new Tone.Panner().toDestination();      // 立体声位置
 const verb = new Tone.Reverb({decay:1.2, wet:0.3}).toDestination();
 const cymPlayer = new Tone.Player(
-  "music/all-samples/percussion/clash cymbals/clash-cymbals__15_fortissimo_struck-together.mp3"
+  "music/all-samples/percussion/clash-cymbals/suspended-cymbal__1_forte_scraped.mp3"
 ).connect(verb);     // ※ 只建一次
+console.log('cymPlayer.loaded', cymPlayer.loaded);
 
 const pont = new Tone.Sampler({ 
   urls:{
@@ -36,14 +40,19 @@ const pont = new Tone.Sampler({
   },
   
   release:2 }).connect(pan);
+  console.log('pont.loaded', pont.loaded);
+
   
   const PONT_NOTES = ["G3","D4","F4","G4","E4","C5"];
   
 // ⚡ 加在脚本顶部采样区
 const hitBD = new Tone.Player(
   "music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3"
-).connect(verb);
   
+).connect(verb);
+  console.log('hitBD.loaded', hitBD.loaded);
+
+
 
   // ─────────── Sad-Pad 单音循环 ────────────
   function startSadPad(){
@@ -71,29 +80,32 @@ const hitBD = new Tone.Player(
     const TRIG_COOLDOWN = 300;   // ms
 
     function onShakeHead(wDeg){
-    const now = performance.now();
-    if (now - lastTrig < TRIG_COOLDOWN) return;   // 还在冷却期
-    lastTrig = now;
+      if(!audioReady) return;            // ← 新增
+      const now = performance.now();
+      if (now - lastTrig < TRIG_COOLDOWN) return;   // 还在冷却期
+      lastTrig = now;
 
-    /* 1️⃣ 随机选一个音 —— 避免连续同音 */
-    let note;
-    do{
-        note = PONT_NOTES[Math.floor(Math.random()*PONT_NOTES.length)];
-    }while(note === lastNote);     // lastNote 在外层作用域定义
-    lastNote = note;
+      /* 1️⃣ 随机选一个音 —— 避免连续同音 */
+      let note;
+      do{
+          note = PONT_NOTES[Math.floor(Math.random()*PONT_NOTES.length)];
+      }while(note === lastNote);     // lastNote 在外层作用域定义
+      lastNote = note;
 
-    /* 2️⃣ 按角速度映射音量 (0.6~1.0) */
-    const vel = 0.6 + Math.min(Math.abs(wDeg)/180, 1)*0.4;
+      /* 2️⃣ 按角速度映射音量 (0.6~1.0) */
+      const vel = 0.6 + Math.min(Math.abs(wDeg)/180, 1)*0.4;
 
-    /* 3️⃣ 随机弓速 & 声像 */
-    pont.playbackRate = 0.95 + Math.random()*0.1;
-    pan.pan.value     = (Math.random()*2-1)*0.3;
+      /* 3️⃣ 随机弓速 & 声像 */
+      pont.playbackRate = 0.95 + Math.random()*0.1;
+      pan.pan.value     = (Math.random()*2-1)*0.3;
 
-    pont.triggerAttackRelease(note, "8n", undefined, vel);
+      pont.triggerAttackRelease(note, "8n", undefined, vel);
     }
 
 
     function onContractionStart(intensity = 1){
+      if(!audioReady) return;            // ← 新增
+
       hitBD.volume.value = -8 + 8 * intensity;        // -8 dB → 0 dB
       hitBD.playbackRate = 0.9 + Math.random()*0.2;   // 轻抖速率
       hitBD.start();
@@ -129,12 +141,19 @@ function setup(){
   }
   
   function keyPressed(){
-    if (key === '2'){                    // 按数字 2 才解锁音频
-      Tone.start().then(()=>{            // ← 用 Tone.js 自带的解锁方法
-        console.log('🔊 Tone.js AudioContext unlocked');
+    if(key === '2'){
+      Tone.start().then(async ()=>{
+        const waitPont = new Promise(res => pont.onload  = res);
+        const waitHit  = new Promise(res => hitBD.onload = res);
+        const waitCym  = new Promise(res => cymPlayer.onload = res);
+        await Promise.all([waitPont, waitHit, waitCym]);
+        console.log("✅ 全部采样已加载");
+        audioReady = true;         // ← 只有这时才允许发声
       });
     }
   }
+  
+  
   
   
 function draw(){
