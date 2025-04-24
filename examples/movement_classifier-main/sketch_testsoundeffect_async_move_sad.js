@@ -14,8 +14,8 @@ const CONTRACT_COOLDOWN = 400;     // 0.4 s contract cooldown
 
 
 // === THRESHOLDS (全局阈值一览) ===
-const SHAKE_THRESHOLD   = 180;  // deg/s
-const RELEASE_THRESHOLD = 120;
+const SHAKE_THRESHOLD   = 450;  // deg/s
+const RELEASE_THRESHOLD = 350;
 const CONTRACT_ON       = 0.30; 
 const CONTRACT_OFF      = 0.15;
 const HEAD_DROP_RATIO   = 0.05; // 躯干 8 %
@@ -230,8 +230,10 @@ function detectFallingRelative(curr){
   if(!falling && intens >= FALL_TH_ON){
       falling = true;
       playFallingGliss(intens);
+      console.log("Falling-Gliss", { intens:intens.toFixed(2) });
   }else if(falling && intens < FALL_TH_OFF){
       falling = false;
+      console.log("Falling-Gliss failed",  { intens:intens.toFixed(2) });
   }
   
 }
