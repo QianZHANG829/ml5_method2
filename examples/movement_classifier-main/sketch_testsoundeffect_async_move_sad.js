@@ -2,32 +2,35 @@
 // 🎼 Emotion Music System - Modular Structure
 // =====================
 
-const verb = new Tone.Reverb({decay:1.2, wet:0.3}).toDestination();
 
 
 // === GLOBAL STATE ===
-let video, bodyPose, poses = [], poseHistory = [];latestPose = null; 
+let video, bodyPose, poses = [], poseHistory = [];
+let latestPose = null; 
 let isPlaying = false, audioReady = false;
 
 // === THRESHOLDS (全局阈值一览) ===
 const SHAKE_THRESHOLD   = 500;  // deg/s
 const RELEASE_THRESHOLD = 400;
-const CONTRACT_ON       = 0.30;
+const CONTRACT_ON       = 0.30; 
 const CONTRACT_OFF      = 0.15;
-const HEAD_DROP_RATIO   = 0.08; // 躯干 8 %
+const HEAD_DROP_RATIO   = 0.05; // 躯干 8 %
+
 const ACCEL_THRESHOLD   = 80;   // 手触发钢琴
 
 let prevTheta = null, prevTime = null, shaking = false, lastNote = null;
 let shoulderDiffHist = [];
-let baseRatio = null, lastContractTime = 0;
+let baseRatio = null;   // (shoulderDist / torsoLen) 基准
+
+lastContractTime = 0;
 let lastSpikeTime = 0;
 
 
 const ACCELERATION_THRESHOLD = 80;  // 左手触发钢琴
 const FALLING_THRESHOLD      = 80;  // 下坠判定
 const EXTENSION_THRESHOLD    = 100; // 腿/脚延伸
-const COOLDOWN_TIME          = 2000; // 冷却 (ms)
-const SPIN_THREASHOLD        = 60; //旋转
+const COOLDOWN_TIME          = 1000; // 冷却 (ms)
+const SPIN_THRESHOLD        = 60; //旋转
 let lastRotationTrig = 0;  
 
 
@@ -37,6 +40,13 @@ let shoulderDiffHistory = [];
 let lastPianoTriggerTime = 0;
 let lastRotationTriggerTime = 0;
 
+let lastPianoTrig = 0; // 钢琴冷却计时器
+
+
+// ─────────── Tone.js 初始化 ────────────
+/* ───────── Tone.js ───────── */
+const pan = new Tone.Panner().toDestination();      // 立体声位置
+const verb = new Tone.Reverb({decay:1.2, wet:0.3}).toDestination();
 
 // =====================
 // 🎵 INIT AUDIO LAYER 1 - Ambient Cello & Brown Noise
@@ -58,7 +68,7 @@ function initLayer1() {
       D3: "music/all-samples/cello/cello_D3_phrase_mezzo-forte_arco-legato.mp3",
       A3: "music/all-samples/cello/cello_A3_phrase_cresc-decresc_arco-normal.mp3"
     },
-    volume: -8
+    volume: - 15
   }).chain(delay, reverb, Tone.Destination); ;
 
   ambientPlayer = new Tone.Player({
@@ -84,7 +94,7 @@ function initLayer1() {
         },`+${next}m`);return;
       }
       const maxGap=p.t-next;
-      const int=int=singleIntervals.filter(v=>v<=maxGap).sort(()=>Math.random()-.5)[0]||maxGap;
+      const int=singleIntervals.filter(v=>v<=maxGap).sort(()=>Math.random()-.5)[0]||maxGap;
       
       const note=random(singleNotes);
       Tone.Transport.scheduleOnce(t=>{
@@ -92,7 +102,7 @@ function initLayer1() {
         sched(next+int,idx);
       },`+${next}m`);
     }else{
-      const int=random(intervals);
+      const int=random(singleIntervals);
       const note=random(singleNotes);
       Tone.Transport.scheduleOnce(t=>{
         celloSampler.triggerAttack(note,t);
@@ -139,9 +149,11 @@ function initLayer2(){
   }).connect(violinShift);
 
   hitBD=new Tone.Player("music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3")
-        .toDestination();
+        .connect(verb);
+
   cymPlayer=new Tone.Player("music/all-samples/percussion/suspended-cymbal/suspended-cymbal__1_forte_scraped.mp3")
-        .toDestination();
+        .connect(verb);
+
 }
 
 const violinCombos=[
@@ -157,6 +169,7 @@ function playFallingViolin(accel){
   const combo=violinCombos[idx];
   violinShift.pitch=mapRange(accel,0,300,-2,1);
   violinSampler.triggerAttackRelease(combo,"1m",Tone.now(),0.9);
+  console.log("Falling-Violin", { combo: combo.join(" "), accel: accel.toFixed(1) });
 }
 
 /* ————————————————————
@@ -202,6 +215,8 @@ function startCageLoop(){
 function playCageOnce(){
   const url=random(cageURLs);
   const p=new Tone.Player({url,autostart:true});
+  console.log("Cage-FX", { url });
+
   p.volume.value=-12;
   p.connect(cageHPF);
   setTimeout(playCageOnce,random(35000,45000));
@@ -217,6 +232,7 @@ function gotPoses(results){
   poses=results;if(!isPlaying||!results.length) return;
   const now=millis(),pose=results[0];
   poseHistory.push({pose,t:now});
+  latestPose = pose;
   poseHistory=poseHistory.filter(p=>now-p.t<=1000);
 
   detectRotationFacingFront(pose);
@@ -244,15 +260,19 @@ function detectShakeHead(pose){
   const nose=kp.find(k=>k.name==="nose");
   const lS  =kp.find(k=>k.name==="left_shoulder");
   const rS  =kp.find(k=>k.name==="right_shoulder");
+  
   if(!(nose&&lS&&rS&&nose.score>0.4)) return;
   const neck={x:(lS.x+rS.x)/2,y:(lS.y+rS.y)/2};
   const theta=Math.atan2(nose.y-neck.y,nose.x-neck.x);
   const now=performance.now();
+
   if(prevTheta!==null&&prevTime!==null){
     const dt=(now-prevTime)/1000;
     const wDeg=(theta-prevTheta)/dt*180/Math.PI;
     if(!shaking&&Math.abs(wDeg)>SHAKE_THRESHOLD){
-      shaking=true;onShakeHead(Math.abs(wDeg));
+      shaking=true;
+      onShakeHead(Math.abs(wDeg));
+      console.log("Shake Head DETECTED!",wDeg.toFixed(1));
     }else if(shaking&&Math.abs(wDeg)<RELEASE_THRESHOLD){shaking=false;}
   }
   prevTheta=theta;prevTime=now;
@@ -267,21 +287,24 @@ function detectContraction(pose){
   const neck={x:(lS.x+rS.x)/2,y:(lS.y+rS.y)/2};
   const midHip=kp("right_hip");
   if(!midHip) return;
+
   const shoulder=Math.abs(lS.x-rS.x);
   const torso=Math.abs(neck.y-midHip.y); if(torso<1) return;
   const currRatio=shoulder/torso;
   const intensity=Math.max(0,Math.min((baseRatio-currRatio)/0.4,1));
   const headLow=(nose.y-neck.y)/torso >= HEAD_DROP_RATIO;
   const now=millis();
-  if(intensity>=CONTRACT_ON&&headLow&&now-lastContractTime>COOLDOWN_TIME){
-    onContractionStart(intensity);lastContractTime=now;
+  
+  // if(intensity>=CONTRACT_ON&&headLow&&now-lastContractTime>COOLDOWN_TIME){
+    if(intensity>=CONTRACT_ON&&now-lastContractTime>COOLDOWN_TIME){
+    onContractionStart(intensity);
+    lastContractTime=now;
   }
 }
 
 
 /* ─── 标定肩宽 ─── */
 /* ─── 标定肩宽比例 ─── */
-let baseRatio = null;   // (shoulderDist / torsoLen) 基准
 
 function calibrate(){
   let sum = 0, c = 0;
@@ -358,10 +381,12 @@ function detectRotationFacingFront(pose){
     const flip=Math.sign(recent[0])!==Math.sign(recent[3]);
     const delta=Math.abs(recent[3]-recent[0]);
     const now=millis();
-    if(flip&&delta>SPIN_THRESHOLD&&now-lastRotationTrig>COOLDOWN_TIME){
+    if(flip&&delta> SPIN_THRESHOLD &&now-lastRotationTrig>COOLDOWN_TIME){
       rotVerb.decay=random(6,12);rotVerb.wet=random(0.4,0.8);
       violinSampler.connect(rotVerb);
       violinSampler.triggerAttackRelease("A#4","2n");
+      console.log("Hand-Piano", { delta: delta.toFixed(1) });
+
       lastRotationTrig=now;shoulderDiffHist=[];
     }
   }
@@ -406,10 +431,17 @@ function setup() {
 
 function draw() {
   image(video, 0, 0, width, height);
-  poses.forEach(p => p.keypoints.forEach(k => {
-    fill(0, 255, 0); noStroke(); circle(k.x, k.y, 5);
-  }));
+
+  /* ── 1️⃣ 关键点可视化 ── */
+  poses.forEach(p =>
+    p.keypoints.forEach(k => {
+      fill(0, 255, 0);
+      noStroke();
+      circle(k.x, k.y, 5);
+    })
+  );
 }
+
 
 /* ——— Helper ——— */
 function kp(label){
@@ -423,3 +455,49 @@ function mapRange(v,i0,i1,o0,o1){
   return Math.min(o1,Math.max(o0,o0+(v-i0)/(i1-i0)*(o1-o0)));
 }
 function millis(){return performance.now();}
+
+
+///////
+
+function onShakeHead(wDeg){
+  if(!audioReady) return;            // ← 新增
+  const now = performance.now();
+  if (now - lastTrig < TRIG_COOLDOWN) return;   // 还在冷却期
+  lastTrig = now;
+
+  /* 1️⃣ 随机选一个音 —— 避免连续同音 */
+  let note;
+  do{
+      note = PONT_NOTES[Math.floor(Math.random()*PONT_NOTES.length)];
+  }while(note === lastNote);     // lastNote 在外层作用域定义
+  lastNote = note;
+  console.log("🚩 shake violin note",note);
+
+
+  /* 2️⃣ 按角速度映射音量 (0.6~1.0) */
+  const vel = 0.6 + Math.min(Math.abs(wDeg)/180, 1)*0.4;
+
+  /* 3️⃣ 随机弓速 & 声像 */
+  pont.playbackRate = 0.95 + Math.random()*0.1;
+  pan.pan.value     = (Math.random()*2-1)*0.3;
+
+  pont.triggerAttackRelease(note, "8n", undefined, vel);
+  console.log("Shake-Violin", { note, wDeg: wDeg.toFixed(1) });
+}
+
+
+function onContractionStart(intensity = 1){
+  if(!audioReady) return;            // ← 新增
+
+  hitBD.volume.value = -8 + 8 * intensity;        // -8 dB → 0 dB
+  hitBD.playbackRate = 0.9 + Math.random()*0.2;   // 轻抖速率
+  hitBD.start();
+  console.log("Contract-BD", { intensity: (intensity*100).toFixed(0)+"%" });
+
+
+  if(intensity > 0.8){
+    cymPlayer.volume.value = -10;
+    cymPlayer.start("+0.02");      // 安全：buffer 已经加载
+    console.log("Contract-Cymbal", { intensity: (intensity*100).toFixed(0)+"%" });
+  }
+}
