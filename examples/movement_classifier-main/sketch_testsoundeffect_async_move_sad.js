@@ -9,10 +9,13 @@ let video, bodyPose, poses = [], poseHistory = [];
 let latestPose = null; 
 let isPlaying = false, audioReady = false;
 let hitBD, cymPlayer;
+const CONTRACT_COOLDOWN = 400;     // 0.4 s contract cooldown
+
+
 
 // === THRESHOLDS (全局阈值一览) ===
-const SHAKE_THRESHOLD   = 500;  // deg/s
-const RELEASE_THRESHOLD = 400;
+const SHAKE_THRESHOLD   = 180;  // deg/s
+const RELEASE_THRESHOLD = 120;
 const CONTRACT_ON       = 0.30; 
 const CONTRACT_OFF      = 0.15;
 const HEAD_DROP_RATIO   = 0.05; // 躯干 8 %
@@ -150,20 +153,31 @@ function initLayer2(){
     volume:-8
   }).connect(violinShift);
 
-  hitBD = new Tone.Player(
-    "music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3"
-  );                                 // ← 先只 new，不马上接到输出
+  // ---- ① 整体鼓总线 ----
+  const drumBus = new Tone.Gain().toDestination();
 
-  // ① 创建 Player ➜ 接自己的 Reverb ➜ Destination
-  const drumVerb = new Tone.Reverb({ decay: 0.8, wet: 0.15 }).toDestination();
+  // ---- ② 短房间（原来那条，可适当缩短 / 保留）----
+  const drumShortVerb = new Tone.Reverb({ decay: 0.9,  wet: 0.20 }).connect(drumBus);
+
+  // ---- ③ 长回升链：大混响 + 轻反馈延迟 ----
+  const drumLongVerb   = new Tone.Reverb({ decay: 4.0,  wet: 0.00 });       // wet 初始 0
+  const drumDelay      = new Tone.FeedbackDelay({ delayTime: "8n", feedback: 0.0 });
+  drumLongVerb.connect(drumDelay);
+  drumDelay.connect(drumBus);
+
+  // ---- ④ Player -> 两条并联 ----
   hitBD = new Tone.Player(
           "music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3"
-        ).connect(drumVerb);   // 直接 chain，根本用不到 disconnect()
+        )
+        .connect(drumShortVerb)   // 直接干 + 短 verb
+        .connect(drumLongVerb);   // 同时喂给长 verb
 
 
   cymPlayer = new Tone.Player(
   "music/all-samples/percussion/suspended-cymbal/suspended-cymbal__1_forte_scraped.mp3"
-  ).connect(drumVerb);
+  )
+        .connect(drumShortVerb)   // 直接干 + 短 verb
+        .connect(drumLongVerb);   // 同时喂给长 verb
 
 }
 
@@ -250,7 +264,69 @@ function playFallingGliss(intens){
 /* ————————————————————
  * AUDIO LAYER 3 – Piano Hit & Cage Random FX
  * ———————————————————— */
+
 let pianoPlayers=[],lastPianoIdx=-1;
+
+
+/* -------------------------------------------
+ *  Shake-Head FX BUS  ——  厚 · 慌 · 漫
+ * ------------------------------------------- */
+/* ① 先建 Shake-Head FX 链 —— 低通 → 失真 → Verb → Delay → Bus */
+const shakeBus   = new Tone.Gain().toDestination();
+const shakeLPF   = new Tone.Filter(250, "lowpass").connect(shakeBus);
+const shakeDist  = new Tone.Distortion(0).connect(shakeLPF);
+const shakeVerb  = new Tone.Reverb({ decay: 4, wet: 0 }).connect(shakeDist);
+const shakeDelay = new Tone.FeedbackDelay({ delayTime: "16n", feedback: 0.15 , wet: 0 })
+                      .connect(shakeVerb);
+
+
+/* ↓12 半音的 PitchShift，接在 FX 链最前端 */
+const pizzSubShift = new Tone.PitchShift({ pitch: -12 }).connect(shakeDelay);
+
+const snapFiles = {
+  C4 : "music/all-samples/violin/violin_C4_025_forte_snap-pizz.mp3",
+  G3 : "music/all-samples/violin/violin_G3_025_forte_snap-pizz.mp3",
+};
+
+const shakePizz = new Tone.Players(
+  snapFiles,
+  () => console.log("🎻 snap-pizz ready")
+)
+  .toDestination()      // 干声直接出来
+  .connect(pizzSubShift);   // 同时送进 ↓12 & 其后的 FX
+
+let lastPizz = null;     // 避免重复 note
+
+function onShakeHead(wDeg){
+  if (!audioReady) return;
+  const now = performance.now();
+  if (now - lastTrig < TRIG_COOLDOWN) return;
+  lastTrig = now;
+
+  /* 选一个不重复的 note */
+  const keys = Object.keys(snapFiles);
+  let key;
+  do { key = keys[Math.floor(Math.random()*keys.length)]; }
+  while (key === lastPizz);
+  lastPizz = key;
+
+  const player = shakePizz.player(key);
+
+  /* 干声音量 -18 ~ -6 dB 映射 */
+  player.volume.value = mapRange(wDeg, 180, 720, -18, -6);
+
+  /* 随机速率 & 立体声 */
+  player.playbackRate = 0.9 + Math.random()*0.25;
+  player.pan          = (Math.random()*2-1)*0.4;
+
+  player.start();          // 这一次就够了
+  console.log("Shake-SnapPizz", { key, wDeg: Math.round(wDeg) });
+}
+
+
+
+
+
 function initLayer3(){
   const gShift=new Tone.PitchShift().toDestination();
   const pianoURLs=[
@@ -301,7 +377,6 @@ function playCageOnce(){
 }
 
 
-
 /* ————————————————————
  * POSE + MOTION HANDLERS
  * ———————————————————— */
@@ -330,35 +405,73 @@ function gotPoses(results){
   
 }
 
-/* ——— Shake Head ——— */
-function detectShakeHead(pose){
-  const kp=pose.keypoints;
-  const nose=kp.find(k=>k.name==="nose");
-  const lS  =kp.find(k=>k.name==="left_shoulder");
-  const rS  =kp.find(k=>k.name==="right_shoulder");
-  
-  if(!(nose&&lS&&rS&&nose.score>0.4)) return;
-  const neck={x:(lS.x+rS.x)/2,y:(lS.y+rS.y)/2};
-  const theta=Math.atan2(nose.y-neck.y,nose.x-neck.x);
-  const now=performance.now();
 
-  if(prevTheta!==null&&prevTime!==null){
-    const dt=(now-prevTime)/1000;
-    const wDeg=(theta-prevTheta)/dt*180/Math.PI;
-    if(!shaking&&Math.abs(wDeg)>SHAKE_THRESHOLD){
-      shaking=true;
-      onShakeHead(Math.abs(wDeg));
-      console.log("Shake Head DETECTED!",wDeg.toFixed(1));
-    }else if(shaking&&Math.abs(wDeg)<RELEASE_THRESHOLD){shaking=false;}
-  }
-  prevTheta=theta;prevTime=now;
-}
+  // ─────────── 摇头尖音 ────────────
+  // 随机音集合（确保都已在 Sampler.urls 里）
+
+    // 冷却：两次触发至少相隔 300 ms
+    let lastTrig = 0;
+    const TRIG_COOLDOWN = 300;   // ms
+
+
+    function onShakeHead(wDeg){
+      if (!audioReady) return;
+    
+      // --- 冷却 ---
+      const now = performance.now();
+      if (now - lastTrig < TRIG_COOLDOWN) return;
+      lastTrig = now;
+    
+      // --- 1. 选 note（不重复）
+      const keys = Object.keys(snapFiles);
+      let key;
+      do { key = keys[Math.floor(Math.random()*keys.length)]; }
+      while (key === lastPizz);
+      lastPizz = key;
+      const player = shakePizz.player(key);
+    
+      // --- 2. 把角速度 180-720°/s 映射到“慌乱度” 0-1 ---
+      const frenzy = Math.min(Math.max((wDeg-180)/(720-180), 0), 1);
+    
+      /* 3. 干声音量 -18 → -6 dB */
+      player.volume.value = -18 + frenzy * 12;
+    
+      /* 4. FX 参数随 frenzy 变 */
+      shakeVerb.wet.targetRampTo(0.2 + frenzy*0.6, 0.05);    // 0.2-0.8
+      shakeVerb.decay = 3 + frenzy*3;                        // 3-6 s
+      shakeDelay.wet.targetRampTo(0.05 + frenzy*0.25, 0.05); // 0.05-0.3
+      shakeDist.distortion = 0.1 + frenzy*0.5;               // 轻到中度失真
+      shakeLPF.frequency.setValueAtTime(200 + frenzy*300, Tone.now()); // 200-500 Hz
+    
+      /* 5. 随机微调 playbackRate & 立体声 */
+      player.playbackRate = 0.9 + Math.random()*0.25;
+      const panNode = new Tone.Panner((Math.random()*2-1)*0.4).connect(Tone.Destination);
+      player.connect(panNode);        // 干声也随机左右
+    
+      player.start();
+      console.log("Shake-SnapPizz", { key, wDeg: Math.round(wDeg), frenzy: frenzy.toFixed(2) });
+    }
+    
+   
+
+    function onContractionStart(intensity = 1){
+      if(!audioReady) return;            // ← 新增
+
+      hitBD.volume.value = -8 + 8 * intensity;        // -8 dB → 0 dB
+      hitBD.playbackRate = 0.9 + Math.random()*0.2;   // 轻抖速率
+      hitBD.start();
+  
+
+      if(intensity > 0.8){
+        cymPlayer.volume.value = -10;
+        cymPlayer.start("+0.02");      // 安全：buffer 已经加载
+      }
+    }
+    
 
 /* ——— Contract Detection (shoulder-torso ratio + headLow) ——— */
 
 /* 2️⃣ 冷却时间 & 触发门槛 —— 回到旧设定 */
-const CONTRACT_COOLDOWN = 400;     // 0.4 s
-
 function detectContraction(pose){
   if(baseRatio===null) return;
   const lS=kp("left_shoulder"),rS=kp("right_shoulder");
@@ -375,8 +488,8 @@ function detectContraction(pose){
   const headLow=(nose.y-neck.y)/torso >= HEAD_DROP_RATIO;
   const now=millis();
   
-  // if(intensity>=CONTRACT_ON&&headLow&&now-lastContractTime>COOLDOWN_TIME){
-    if(intensity>=CONTRACT_ON&&now-lastContractTime>CONTRACT_COOLDOWN){
+  if(intensity>=CONTRACT_ON&&headLow&&now-lastContractTime>CONTRACT_COOLDOWN){
+    // if(intensity>=CONTRACT_ON&&now-lastContractTime>CONTRACT_COOLDOWN){
     onContractionStart(intensity);
     lastContractTime=now;
   }
@@ -509,29 +622,31 @@ function millis(){return performance.now();}
 ///////
 
 function onShakeHead(wDeg){
-  if(!audioReady) return;            // ← 新增
+  if (!audioReady) return;
+
+  // 冷却
   const now = performance.now();
-  if (now - lastTrig < TRIG_COOLDOWN) return;   // 还在冷却期
+  if (now - lastTrig < TRIG_COOLDOWN) return;
   lastTrig = now;
 
-  /* 1️⃣ 随机选一个音 —— 避免连续同音 */
-  let note;
-  do{
-      note = PONT_NOTES[Math.floor(Math.random()*PONT_NOTES.length)];
-  }while(note === lastNote);     // lastNote 在外层作用域定义
-  lastNote = note;
-  console.log("🚩 shakehead violin note",note);
+  /* 1️⃣ 选一个 snap-pizz note（不重复） */
+  const keys = Object.keys(snapFiles);
+  let key;
+  do { key = keys[Math.floor(Math.random()*keys.length)]; }
+  while (key === lastPizz);
+  lastPizz = key;
 
+  const player = shakePizz.player(key);
 
-  /* 2️⃣ 按角速度映射音量 (0.6~1.0) */
-  const vel = 0.6 + Math.min(Math.abs(wDeg)/180, 1)*0.4;
+  /* 2️⃣ 音量：角速度 200-800°/s → -18 到 -4 dB */
+  player.volume.value = mapRange(wDeg, 180, 720, -18, -4);
 
-  /* 3️⃣ 随机弓速 & 声像 */
-  pont.playbackRate = 0.95 + Math.random()*0.1;
-  pan.pan.value     = (Math.random()*2-1)*0.3;
+  /* 3️⃣ playbackRate & pan 让每次更活 */
+  player.playbackRate = 0.9 + Math.random()*0.25;      // 0.9-1.15
+  if (player.pan !== undefined) player.pan = (Math.random()*2-1)*0.4;
 
-  pont.triggerAttackRelease(note, "8n", undefined, vel);
-  console.log("Shake-Violin", { note, wDeg: wDeg.toFixed(1) });
+  player.start();
+  console.log("Shake-SnapPizz", { key, wDeg: wDeg.toFixed(0), dB: player.volume.value });
 }
 
 
@@ -549,4 +664,45 @@ function onContractionStart(intensity = 1){
     cymPlayer.start("+0.02");      // 安全：buffer 已经加载
     console.log("Contract-Cymbal", { intensity: (intensity*100).toFixed(0)+"%" });
   }
+}
+
+
+
+// ────── 摇头检测 ──────
+function detectShakeHead(){
+  if(!latestPose) return;
+  const kp = latestPose.keypoints;
+  const nose = kp.find(k=>k.name==="nose");
+  const lSh  = kp.find(k=>k.name==="left_shoulder");
+  const rSh  = kp.find(k=>k.name==="right_shoulder");
+  if(!nose || nose.score<0.4 || !lSh || !rSh) return;
+
+  const neck = {x:(lSh.x+rSh.x)/2, y:(lSh.y+rSh.y)/2};
+  const theta = Math.atan2(nose.y-neck.y, nose.x-neck.x);
+
+  const now = performance.now();
+  if(prevTheta!==null && prevTime!==null){
+    const dt   = (now-prevTime)/1000;
+    const dAng = shortestAngleDiff(theta,prevTheta);
+    const wDeg = dAng/dt*180/Math.PI;
+    // console.log(`ω = ${wDeg.toFixed(1)}°/s`);
+
+    if(!shaking && Math.abs(wDeg)>SHAKE_THRESHOLD){
+      shaking = true;
+      onShakeHead(wDeg);
+      console.log("🚩 Shake Head DETECTED!", wDeg.toFixed(1));
+    }else if(shaking && Math.abs(wDeg)<RELEASE_THRESHOLD){
+      shaking = false;
+      console.log("✅ Shake Head ended");
+    }
+  }
+  prevTheta = theta;
+  prevTime  = now;
+}
+
+function shortestAngleDiff(a2,a1){
+  let d = a2-a1;
+  if(d> Math.PI) d-=2*Math.PI;
+  if(d<-Math.PI) d+=2*Math.PI;
+  return d;
 }
