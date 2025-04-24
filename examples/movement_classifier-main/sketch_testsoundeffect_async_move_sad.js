@@ -63,20 +63,20 @@ function initLayer1() {
 
   celloSampler = new Tone.Sampler({
     urls: {
-      "A#4": "music/all-samples/violin/violin_As4_long_forte_molto-vibrato.mp3",   // ← 新增
+      "A#4": "./music/all-samples/violin/violin_As4_long_forte_molto-vibrato.mp3",   // ← 新增
 
-      C3: "music/all-samples/cello/cello_C3_1_pianissimo_arco-normal.mp3",
-      G2: "music/all-samples/cello/cello_G2_15_fortissimo_arco-normal.mp3",
-      E3: "music/all-samples/cello/cello_E3_1_mezzo-piano_arco-minor-trill.mp3",
-      "E3-1": "music/all-samples/cello/cello_E3_phrase_cresc-decresc_arco-normal.mp3",
-      D3: "music/all-samples/cello/cello_D3_phrase_mezzo-forte_arco-legato.mp3",
-      A3: "music/all-samples/cello/cello_A3_phrase_cresc-decresc_arco-normal.mp3"
+      C3: "./music/all-samples/cello/cello_C3_1_pianissimo_arco-normal.mp3",
+      G2: "./music/all-samples/cello/cello_G2_15_fortissimo_arco-normal.mp3",
+      E3: "./music/all-samples/cello/cello_E3_1_mezzo-piano_arco-minor-trill.mp3",
+      "E3-1": "./music/all-samples/cello/cello_E3_phrase_cresc-decresc_arco-normal.mp3",
+      D3: "./music/all-samples/cello/cello_D3_phrase_mezzo-forte_arco-legato.mp3",
+      A3: "./music/all-samples/cello/cello_A3_phrase_cresc-decresc_arco-normal.mp3"
     },
     volume: -20
   }).chain(delay, reverb, Tone.Destination); ;
 
   ambientPlayer = new Tone.Player({
-    url: "music/async/ambient_experimental.wav",
+    url: "./music/async/ambient_experimental.wav",
     loop: true,
     autostart: true,
     volume: -28
@@ -143,12 +143,12 @@ function initLayer2(){
 
   violinSampler=new Tone.Sampler({
     urls:{
-      "G#7":"music/all-samples/violin/violin_Gs5_long_forte_molto-vibrato.mp3",
-      "E4":"music/all-samples/violin/violin_E4_1_piano_arco-normal.mp3",
-      "G3":"music/all-samples/violin/violin_G3_1_mezzo-forte_molto-vibrato.mp3",
-      "A3":"music/all-samples/violin/violin_A3_1_pianissimo_arco-normal.mp3",
-      "A4":"music/all-samples/violin/violin_A4_1_fortissimo_arco-normal.mp3",
-      "A5":"music/all-samples/violin/violin_A4_05_pianissimo_arco-normal.mp3"
+      "G#7":"./music/all-samples/violin/violin_Gs5_long_forte_molto-vibrato.mp3",
+      "E4":"./music/all-samples/violin/violin_E4_1_piano_arco-normal.mp3",
+      "G3":"./music/all-samples/violin/violin_G3_1_mezzo-forte_molto-vibrato.mp3",
+      "A3":"./music/all-samples/violin/violin_A3_1_pianissimo_arco-normal.mp3",
+      "A4":"./music/all-samples/violin/violin_A4_1_fortissimo_arco-normal.mp3",
+      "A5":"./music/all-samples/violin/violin_A4_05_pianissimo_arco-normal.mp3"
     },
     volume:-8
   }).connect(violinShift);
@@ -167,7 +167,7 @@ function initLayer2(){
 
   // ---- ④ Player -> 两条并联 ----
   hitBD = new Tone.Player(
-          "music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3"
+          "./music/all-samples/percussion/bass-drum/bass-drum__1_fortissimo_struck-singly.mp3"
         )
         .connect(drumShortVerb)   // 直接干 + 短 verb
         .connect(drumLongVerb);   // 同时喂给长 verb
@@ -185,14 +185,14 @@ function initLayer2(){
 
 // ① 一次性建一个 Players（Tone.js 的「多 Player」容器）
 const glissFiles = {
-  "As5": "music/all-samples/violin/violin_As5_phrase_mezzo-forte_arco-glissando.mp3",
-  "B4" : "music/all-samples/violin/violin_B4_phrase_mezzo-forte_arco-glissando.mp3",
-  "D4" : "music/all-samples/violin/violin_D4_phrase_mezzo-forte_arco-glissando.mp3",
-  "D4p": "music/all-samples/violin/violin_D4_phrase_mezzo-piano_arco-glissando.mp3",
-  "D5" : "music/all-samples/violin/violin_D5_phrase_mezzo-forte_arco-glissando.mp3",
-  "G3" : "music/all-samples/violin/violin_G3_phrase_mezzo-forte_arco-glissando.mp3",
-  "G4" : "music/all-samples/violin/violin_G4_phrase_mezzo-forte_arco-glissando.mp3",
-  "G4p": "music/all-samples/violin/violin_G4_phrase_mezzo-piano_arco-glissando.mp3",
+  "As5": "./music/all-samples/violin/violin_As5_phrase_mezzo-forte_arco-glissando.mp3",
+  "B4" : "./music/all-samples/violin/violin_B4_phrase_mezzo-forte_arco-glissando.mp3",
+  "D4" : "./music/all-samples/violin/violin_D4_phrase_mezzo-forte_arco-glissando.mp3",
+  "D4p": "./music/all-samples/violin/violin_D4_phrase_mezzo-piano_arco-glissando.mp3",
+  "D5" : "./music/all-samples/violin/violin_D5_phrase_mezzo-forte_arco-glissando.mp3",
+  "G3" : "./music/all-samples/violin/violin_G3_phrase_mezzo-forte_arco-glissando.mp3",
+  "G4" : "./music/all-samples/violin/violin_G4_phrase_mezzo-forte_arco-glissando.mp3",
+  "G4p": "./music/all-samples/violin/violin_G4_phrase_mezzo-piano_arco-glissando.mp3",
 };
 
 const glissPlayers = new Tone.Players(glissFiles, () => {
@@ -284,8 +284,8 @@ const shakeDelay = new Tone.FeedbackDelay({ delayTime: "16n", feedback: 0.15 , w
 const pizzSubShift = new Tone.PitchShift({ pitch: -12 }).connect(shakeDelay);
 
 const snapFiles = {
-  C4 : "music/all-samples/violin/violin_C4_025_forte_snap-pizz.mp3",
-  G3 : "music/all-samples/violin/violin_G3_025_forte_snap-pizz.mp3",
+  C4 : "./music/all-samples/violin/violin_Cs4_025_forte_snap-pizz.mp3",
+  G3 : "./music/all-samples/violin/violin_G3_025_forte_snap-pizz.mp3",
 };
 
 const shakePizz = new Tone.Players(
@@ -325,14 +325,12 @@ function onShakeHead(wDeg){
 
 
 
-
-
 function initLayer3(){
   const gShift=new Tone.PitchShift().toDestination();
   const pianoURLs=[
-    "music/async/piano-hit-2.wav",
-    "music/async/piano-lowhigh-hit.wav",
-    "music/async/piano_string_hit_reverb.wav"
+    "./music/async/piano-hit-2.wav",
+    "./music/async/piano-lowhigh-hit.wav",
+    "./music/async/piano_string_hit_reverb.wav"
   ];
   pianoPlayers=pianoURLs.map(u=>{
     const p=new Tone.Player(u).connect(gShift);
@@ -351,8 +349,8 @@ function initLayer3(){
 }
 
 const cageURLs=[
-  "music/async/tibetan-bowl_center-hit.wav",
-  "music/async/zymbel.mp3"
+  "./music/async/tibetan-bowl_center-hit.wav",
+  "./music/async/zymbel.mp3"
 ];
 const afterCageFX=new Tone.Gain(0).toDestination();
 const cageHPF=new Tone.Filter(120,"highpass");
@@ -620,35 +618,6 @@ function millis(){return performance.now();}
 
 
 ///////
-
-function onShakeHead(wDeg){
-  if (!audioReady) return;
-
-  // 冷却
-  const now = performance.now();
-  if (now - lastTrig < TRIG_COOLDOWN) return;
-  lastTrig = now;
-
-  /* 1️⃣ 选一个 snap-pizz note（不重复） */
-  const keys = Object.keys(snapFiles);
-  let key;
-  do { key = keys[Math.floor(Math.random()*keys.length)]; }
-  while (key === lastPizz);
-  lastPizz = key;
-
-  const player = shakePizz.player(key);
-
-  /* 2️⃣ 音量：角速度 200-800°/s → -18 到 -4 dB */
-  player.volume.value = mapRange(wDeg, 180, 720, -18, -4);
-
-  /* 3️⃣ playbackRate & pan 让每次更活 */
-  player.playbackRate = 0.9 + Math.random()*0.25;      // 0.9-1.15
-  if (player.pan !== undefined) player.pan = (Math.random()*2-1)*0.4;
-
-  player.start();
-  console.log("Shake-SnapPizz", { key, wDeg: wDeg.toFixed(0), dB: player.volume.value });
-}
-
 
 function onContractionStart(intensity = 1){
   if(!audioReady) return;            // ← 新增
