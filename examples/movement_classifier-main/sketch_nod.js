@@ -41,12 +41,14 @@ const pont = new Tone.Sampler({
     G4:"music/all-samples/violin/violin_G4_1_piano_arco-sul-ponticello.mp3",
     E4:"music/all-samples/violin/violin_E4_1_piano_arco-sul-ponticello.mp3",
     C5:"music/all-samples/violin/violin_C5_1_piano_arco-sul-ponticello.mp3",
+    D4long:"music/all-samples/violin/violin_D4_very-long_fortissimo_arco-tremolo.mp3"
+
   },
   
   release:2 }).connect(pan);
 
   
-  const PONT_NOTES = ["G3","D4","F4","G4","E4","C5"];
+  const PONT_NOTES = ["G3","D4","F4","G4","E4","C5","D4long"];
   
 // ⚡ 加在脚本顶部采样区
 const hitBD = new Tone.Player(
@@ -93,6 +95,8 @@ const hitBD = new Tone.Player(
           note = PONT_NOTES[Math.floor(Math.random()*PONT_NOTES.length)];
       }while(note === lastNote);     // lastNote 在外层作用域定义
       lastNote = note;
+      console.log("🚩 shake violin note",note);
+
 
       /* 2️⃣ 按角速度映射音量 (0.6~1.0) */
       const vel = 0.6 + Math.min(Math.abs(wDeg)/180, 1)*0.4;
@@ -233,7 +237,7 @@ function detectContraction(){
   if(!latestPose || baseRatio === null) return;
 
   const lS = kp("left_shoulder"), rS = kp("right_shoulder");
-  const neck = kp("left_shoulder");
+  const neck = kp("right_shoulder");
   const midHip = kp("right_hip");
   const nose =kp("nose");
   if(!lS || !rS || !neck || !midHip) return;
