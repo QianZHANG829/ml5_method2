@@ -9,16 +9,18 @@ let video, bodyPose, poses = [], poseHistory = [];
 let latestPose = null; 
 let isPlaying = false, audioReady = false;
 let hitBD, cymPlayer;
-const CONTRACT_COOLDOWN = 2000;     //  contract cooldown
+const CONTRACT_COOLDOWN = 500;     // 0.4 s contract cooldown
+// 顶部
+let fallPlayers;   // 仅声明，稍后赋值
+
 
 
 
 // === THRESHOLDS (全局阈值一览) ===
 const SHAKE_THRESHOLD   = 450;  // deg/s
 const RELEASE_THRESHOLD = 350;
-
-const CONTRACT_ON       = 0.70; 
-const CONTRACT_OFF      = 0.50;
+const CONTRACT_ON       = 0.30; 
+const CONTRACT_OFF      = 0.25;
 const HEAD_DROP_RATIO   = 0.08; // 躯干 8 %
 
 const ACCEL_THRESHOLD   = 80;   // 手触发钢琴
@@ -135,27 +137,101 @@ function initLayer1() {
 // =====================
 let violinSampler, violinShift;
 
+const FALL_TH_ON  = 0.25;   // 25% 躯干 → 触发
+const FALL_TH_OFF = 0.08;   // 回到 15% 以下 → 释放
+
+let falling = false;
+
 const PONT_NOTES = ["D4","F4","A4","C5","E5"];  // D minor 五声音阶
 
 function initLayer2(){
-  const vVerb=new Tone.Reverb({decay:14,wet:0.8});
-  const vDelay=new Tone.FeedbackDelay({delayTime:"4n",feedback:0.3,wet:0.5});
-  violinShift=new Tone.PitchShift(0).chain(vDelay,vVerb,Tone.Destination);
 
-  violinSampler=new Tone.Sampler({
-    urls:{
-      "G#7":"./music/all-samples/violin/violin_Gs5_long_forte_molto-vibrato.mp3",
-      "E4":"./music/all-samples/violin/violin_E4_1_piano_arco-normal.mp3",
-      "G3":"./music/all-samples/violin/violin_G3_1_mezzo-forte_molto-vibrato.mp3",
-      "A3":"./music/all-samples/violin/violin_A3_1_pianissimo_arco-normal.mp3",
-      "A4":"./music/all-samples/violin/violin_A4_1_fortissimo_arco-normal.mp3",
-      "A5":"./music/all-samples/violin/violin_A4_05_pianissimo_arco-normal.mp3",
+  /* ===== ① 所有坠落相关采样 ===== */
+  const fallFiles = {
+    /* ─ Violin gliss ─ */
+    "As5": "./music/all-samples/violin/violin_As5_phrase_mezzo-forte_arco-glissando.mp3",
+    "B4" : "./music/all-samples/violin/violin_B4_phrase_mezzo-forte_arco-glissando.mp3",
+    "D4" : "./music/all-samples/violin/violin_D4_phrase_mezzo-forte_arco-glissando.mp3",
+    "D4p": "./music/all-samples/violin/violin_D4_phrase_mezzo-piano_arco-glissando.mp3",
+    "D5" : "./music/all-samples/violin/violin_D5_phrase_mezzo-forte_arco-glissando.mp3",
+    "G3" : "./music/all-samples/violin/violin_G3_phrase_mezzo-forte_arco-glissando.mp3",
+    "G4" : "./music/all-samples/violin/violin_G4_phrase_mezzo-forte_arco-glissando.mp3",
+    "G4p": "./music/all-samples/violin/violin_G4_phrase_mezzo-piano_arco-glissando.mp3",
 
-      
-    },
-    volume:-8
-  }).connect(violinShift);
+    /* ─ Viola ─ */
+    "V_C3": "./music/all-samples/viola/viola-g-4-tenuto-vibrato.wav",
+    "V_E3": "./music/all-samples/viola/viola_A4_very-long_mezzo-forte_arco-normal.mp3",
 
+    /* ─ Bassoon ─ */
+    "B_C2": "./music/all-samples/bassoon/bassoon_C2_1_forte_normal.mp3",
+    "B_D2": "./music/all-samples/bassoon/bassoon_D2_1_forte_normal.mp3"
+  };
+  
+  /* ---------- 1. 基本效果器 ---------- */
+  const vVerb  = new Tone.Reverb({ decay: 14, wet: 0.8 });
+  const vDelay = new Tone.FeedbackDelay({ delayTime: "4n", feedback: 0.3, wet: 0.5 });
+
+
+  const fallPlayers = new Tone.Players(fallFiles, () =>
+    console.log("🪂 fallPlayers ready")).disconnect();   // 先断开默认输出
+
+  /* ---------- 2. 立体声滤波 + Autopan 总线 ---------- */
+  const splitter = new Tone.Split();          // ← 改名
+  const leftHPF  = new Tone.Filter(350, "highpass");
+  const rightLPF = new Tone.Filter(550, "lowpass");
+  const merger   = new Tone.Merge();          // ← 改名
+  const slowPan  = new Tone.AutoPanner({ frequency: 0.05, depth: 0.4 }).start();
+  
+
+
+  splitter.connect(leftHPF, 0);     // L
+  splitter.connect(rightLPF, 1);    // R
+  leftHPF.connect(merger, 0, 0);
+  rightLPF.connect(merger, 0, 1);
+  merger.connect(slowPan).toDestination();    // ← 唯一到输出的路径
+
+  /* ---------- 3. Shift 节点 ---------- */
+  const violinShift = new Tone.PitchShift(0)        // 只赋值一次（全局变量）
+                   .chain(vDelay, vVerb, splitter);
+
+  const bassPedShift = new Tone.PitchShift({ pitch: -12 })
+                          .connect(new Tone.Reverb({ decay: 6, wet: 0.6 }))
+                          .connect(splitter);        // 不再直接到 Destination
+
+
+
+  /* 接线：Violin & Viola → violinShift，Bassoon → bassPedShift */
+  ["As5","B4","D4","D4p","G3","G4","G4p","V_C3","V_E3"]
+      .forEach(k => fallPlayers.player(k).connect(violinShift));
+
+  ["B_C2","B_D2"]
+      .forEach(k => fallPlayers.player(k).connect(bassPedShift));
+
+
+
+
+  const p = fallPlayers.player(key);
+  
+  p.playbackRate = mapRange(intens, 0.25, 1, 0.5, 1.4);
+  p.volume.value = mapRange(intens, 0.25, 1, -10, -2);
+  p.start();
+  console.log("Fall-Gliss", { key, intens:intens.toFixed(2) });
+}
+
+function playFallingGliss(intens){
+  // intens = 0.0-1.0
+  let key;
+  if(intens < 0.35){
+      key = random(["V_C3","V_E3","G3","G4p"]);
+  }else if(intens < 0.55){
+      key = random(["D4","D4p","B4","D5"]);
+  }else{
+      key = random(["As5","G4","B_C2","B_D2"]);
+  }
+
+  /////////////////////////
+  //drum
+  ////////
   // ---- ① 整体鼓总线 ----
   const drumBus = new Tone.Gain().toDestination();
 
@@ -182,34 +258,11 @@ function initLayer2(){
         .connect(drumShortVerb)   // 直接干 + 短 verb
         .connect(drumLongVerb);   // 同时喂给长 verb
 
+  
+
 }
 
 
-
-// ① 一次性建一个 Players（Tone.js 的「多 Player」容器）
-const glissFiles = {
-  "As5": "./music/all-samples/violin/violin_As5_phrase_mezzo-forte_arco-glissando.mp3",
-  "B4" : "./music/all-samples/violin/violin_B4_phrase_mezzo-forte_arco-glissando.mp3",
-  "D4" : "./music/all-samples/violin/violin_D4_phrase_mezzo-forte_arco-glissando.mp3",
-  "D4p": "./music/all-samples/violin/violin_D4_phrase_mezzo-piano_arco-glissando.mp3",
-  "D5" : "./music/all-samples/violin/violin_D5_phrase_mezzo-forte_arco-glissando.mp3",
-  "G3" : "./music/all-samples/violin/violin_G3_phrase_mezzo-forte_arco-glissando.mp3",
-  "G4" : "./music/all-samples/violin/violin_G4_phrase_mezzo-forte_arco-glissando.mp3",
-  "G4p": "./music/all-samples/violin/violin_G4_phrase_mezzo-piano_arco-glissando.mp3",
-
-  /* ─ Viola ─ */
-  "V_C3": "./music/all-samples/viola/viola-g-4-tenuto-vibrato.wav",
-  "V_E3": "./music/all-samples/viola/viola_A4_very-long_mezzo-forte_arco-normal.mp3",
-
-  /* ─ Bassoon ─ */
-  "B_C2": "./music/all-samples/bassoon/bassoon_C2_1_forte_normal.mp3",
-  "B_D2": "./music/all-samples/bassoon/bassoon_D2_1_forte_normal.mp3",
-
-};
-
-const glissPlayers = new Tone.Players(glissFiles, () => {
-  console.log("🎻 gliss samples ready");
-}).toDestination();                // 也可接 Reverb
 
 function fallIntensity(curr, prev){
   // 1️⃣ 取肩 + 髋 4 点平均 y
@@ -229,55 +282,15 @@ function fallIntensity(curr, prev){
   return dy / torso;        // 0.0 ~ >1.0
 }
 
-const FALL_TH_ON  = 0.25;   // 25% 躯干 → 触发
-const FALL_TH_OFF = 0.08;   // 回到 15% 以下 → 释放
-
-let falling = false;
-
-function detectFallingRelative(curr){
-  const past = poseHistory.find(p => millis() - p.t >= 250);
-  if(!past) return;
-
-  const intens = fallIntensity(curr, past.pose);
-  // console.log("Falling-Gliss 🐦", { intens:intens.toFixed(2) });
-
-  if(!falling && intens >= FALL_TH_ON){
-      falling = true;
-      playFallingGliss(intens);
-      console.log("▶ playFallingGliss()", {key, intens:intens.toFixed(2)});
-
-  }else if(falling && intens < FALL_TH_OFF){
-      falling = false;
-      console.log("Falling-Gliss failed",  { intens:intens.toFixed(2) });
-  }
-  
-}
-
-function playFallingGliss(intens){
-  // 1) 根据强度选一个组 – 低空用低音，剧烈用高音
-  let key;
-  if (intens <=0.25)               key = random(["V_C3","V_E3","G3","G4p"]);      // 比较温和
-  else if (intens <= 0.45)          key = random(["D4","D4p","B4","D5"]);
-  else if (intens <= 0.65)          key = random(["B_C2","B_D2"]);
-  else                             key = random(["As5","G4"]);      // 最激烈
-
-  const player = glissPlayers.player(key);
-
-  // 2) 播放速率 0.5 – 1.2（区分更明显）
-  player.playbackRate = mapRange(intens, 0.25, 1.0, 0.5, 1.4);
-
-  // 3) ±30 cent 微雕色彩
-  violinShift.pitch   = random(-0.5, 0.5);
-
-  /* ── ③ 音量：intens  ─ */
-  const dB = mapRange(intens, 0.25, 1.0, -10, -2);
-  player.volume.value = dB;
-
-  player.start("+0");
-  console.log("💃Fall-Gliss", { key, intens:intens.toFixed(2), rate:player.playbackRate.toFixed(2) });
-}
 
 
+
+
+
+
+
+
+/////////////////////
 /* ————————————————————
  * AUDIO LAYER 3 – Piano Hit & Cage Random FX
  * ———————————————————— */
@@ -477,6 +490,7 @@ function gotPoses(results){
       hitBD.volume.value = -8 + 8 * intensity;        // -8 dB → 0 dB
       hitBD.playbackRate = 0.9 + Math.random()*0.2;   // 轻抖速率
       hitBD.start();
+  
 
       if(intensity > 0.8){
         cymPlayer.volume.value = -10;
@@ -597,9 +611,9 @@ function setup() {
   video.hide();
   bodyPose.detectStart(video, gotPoses);
 
-  initLayer1();
-  initLayer2();
-  initLayer3();
+  initLayer1();   // 环境
+  initLayer2();   // 鼓 / Violin
+  initLayer3();   // 钢琴 / Cage FX
 
   setTimeout(startCageLoop, 30000);  // 10 000 ms 后启动
   calibrate();
@@ -640,17 +654,41 @@ function millis(){return performance.now();}
 function onContractionStart(intensity = 1){
   if(!audioReady) return;            // ← 新增
 
-  hitBD.volume.value = -12 + 12 * intensity;        // -8 dB → 0 dB
-  hitBD.playbackRate = 0.85 + Math.random()*0.3;   // 轻抖速率
-  hitBD.start();
-  console.log("👍Contract-BD", { intensity: (intensity*100).toFixed(0)+"%" });
+  // hitBD.volume.value = -12 + 12 * intensity;        // -8 dB → 0 dB
+  // hitBD.playbackRate = 0.85 + Math.random()*0.3;   // 轻抖速率
+  // hitBD.start();
+  // console.log("👍Contract-BD", { intensity: (intensity*100).toFixed(0)+"%" });
 
 
-  if(intensity > 0.8){
-    cymPlayer.volume.value = -20;
-    cymPlayer.start("+0.02");      // 安全：buffer 已经加载
-    console.log("👍👍Contract-Cymbal", { intensity: (intensity*100).toFixed(0)+"%" });
+  // if(intensity > 0.8){
+  //   cymPlayer.volume.value = -10;
+  //   cymPlayer.start("+0.02");      // 安全：buffer 已经加载
+  //   console.log("👍👍Contract-Cymbal", { intensity: (intensity*100).toFixed(0)+"%" });
+  // }
+}
+
+////////////
+// detect Falling
+///////////
+
+
+function detectFallingRelative(curr){
+  const past = poseHistory.find(p => millis() - p.t >= 250);
+  if(!past) return;
+
+  const intens = fallIntensity(curr, past.pose);
+  console.log("Falling-Gliss 🐦", { intens:intens.toFixed(2) });
+
+  if(!falling && intens >= FALL_TH_ON){
+      falling = true;
+      playFallingGliss(intens);
+      console.log("▶ playFallingGliss()", {key, intens:intens.toFixed(2)});
+
+  }else if(falling && intens < FALL_TH_OFF){
+      falling = false;
+      console.log("Falling-Gliss failed",  { intens:intens.toFixed(2) });
   }
+  
 }
 
 
