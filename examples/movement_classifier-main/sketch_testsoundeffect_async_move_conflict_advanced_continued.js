@@ -277,46 +277,47 @@ function millis(){ return performance.now(); }
 function random(a,b){ return a + Math.random()*(b-a); }
 
 //////////////////  ====================
-// random()  // 随机播放声音，
+// random()  // 随机播放声音，layer
 
-
-/* 1. 采样池 Players + Reverb */
-const shardFX = new Tone.Reverb({ decay: 1.2, wet: 0.8 }).toDestination();
-
+/* 采样池 */
 const shards = new Tone.Players({
   cymbal : "music/async/glass-smash.wav",
   glass  : "music/async/glass-smash-bottle-b.wav",
-  piano : "music/async/piano_string_hit_reverb.wav",
+  piano  : "music/async/piano_string_hit_reverb.wav",
   anvil  : "music/async/sci-fi_explosion_2.wav"
-}).connect(new Tone.Reverb({decay:1.2, wet:0.4})).toDestination();
+})
+  .connect(new Tone.Reverb({ decay: 1.2, wet: 0.4 }))
+  .toDestination();
 
-/* 2. 触发函数：随机选采样 & 随机参数 */
-function triggerShard(){
-  const ids = ["glass", "cymbal", "anvil", "piano"];
+/* 播放函数 */
+function triggerShard(time){
+  const ids = ["glass","cymbal","anvil","piano"];
   const id  = ids[Math.floor(Math.random()*ids.length)];
   const ply = shards.player(id);
 
-  ply.playbackRate = random(0.85, 1.25);          // 变速 ±15 %
-  ply.detune       = random(-300, 150);           // 半音级 detune
-  ply.volume.value = random(-24, -14);            // 随机响度
-  ply.pan          = random(-0.6, 0.6);           // 随机 L/R
-  ply.start();                                    // 立即播放
+  ply.playbackRate = random(0.85, 1.25);
+  ply.detune       = random(-300, 150);
+  ply.volume.value = random(-14, -6);      // 更明显
+  ply.pan          = random(-0.6, 0.6);
+  ply.start(time);                         // ← 关键！
 }
 
-/* 3. 在 Tone.Transport 上定期随机触发 */
+/* 调度器 */
 function initShardScheduler(){
-  // 每 4 小节检查一次（依赖 Transport BPM）
-  Tone.Transport.scheduleRepeat((t)=>{
-      triggerShard();
-      console.log("✨ Shard!", Tone.now().toFixed(2));
-    }, "4n", "+0.5m");   // 延迟 1 小节后开始
+  // 每 4 小节随机触发一次，首触发延迟半小节
+  Tone.Transport.scheduleRepeat(
+    (time)=>{ triggerShard(time); },
+    "4m",
+    "+0.5m"
+  );
 }
+
 
 
 
 if (debug){
   setInterval(()=>{           // 每 1 秒打印一次
-    console.clear();          // 清柜面
+    // console.clear();          // 清柜面
     console.table({
       movement          : movement.toFixed(1),
       avgSpeed          : avgSpeed.toFixed(1),
