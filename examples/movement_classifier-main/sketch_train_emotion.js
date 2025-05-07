@@ -104,7 +104,7 @@ function setup() {
     dataMode: "spatial",  // spatial 模式下每个样本的 xs 是一个对象
     inputs: inputNames,
     outputs: ["label"],
-    learningRate: 0.002,
+    learningRate: 0.001,
     debug: true,
   };
   classifier = ml5.timeSeries(options);
@@ -211,7 +211,7 @@ function keyPressed() {
   // 按 T 键开始训练
   if (key === 't' || key === 'T') {
     classifier.normalizeData();
-    classifier.train({ epochs: 100, validationSplit:0.1, shuffle:false }, finishedTraining);
+    classifier.train({ epochs: 200, validationSplit:0.1, shuffle:false }, finishedTraining);
   }
 }
 

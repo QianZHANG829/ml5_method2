@@ -243,7 +243,7 @@ function draw() {
   // 在屏幕中央显示预测结果
   noStroke();
   textSize(40);
-  textAlign(CENTER, CENTER);
+  textAlign(LEFT, LEFT);
 
   // 根据不同标签设定颜色
   if (poseLabelEmotion.includes("Freedom & Liberation")) {
@@ -254,7 +254,9 @@ function draw() {
     fill(0, 0, 255);
   }
   // text(`Emotion: ${poseLabelEmotion} ${confidence}`, width / 4, height / 4);
-  text("Emotion: " + poseLabelEmotion + confidence, width / 4, height / 4);
+  text("Emotion: " , width / 4 + 400, 10);
+  text( poseLabelEmotion + confidence, width / 4 + 400, 50);
+
 
   }
 
