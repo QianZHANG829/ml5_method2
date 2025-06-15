@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Teachable Video</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Teachable Video</h1>
+    <p>Collect, label, and train short video clips with ease.</p>
+  </header>
+
+  <main class="container">
+    <!-- Left Column: Classes -->
+    <section class="column" id="class-section">
+      <h2>Classes</h2>
+      <div id="class-list">
+        <!-- Class entries go here -->
+      </div>
+      <button id="add-class-btn">+ Add Class</button>
+    </section>
+
+    <!-- Middle Column: Training -->
+    <section class="column" id="train-section">
+      <h2>Train</h2>
+      <button id="train-btn">Train Model</button>
+      <p id="train-status">Not trained yet</p>
+    </section>
+
+    <!-- Right Column: Preview + Export -->
+    <section class="column" id="preview-section">
+      <h2>Preview</h2>
+      <video id="webcam-preview" autoplay muted></video>
+      <p id="prediction-label">Prediction: --</p>
+      <button id="export-btn">Export Dataset</button>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
