@@ -1,51 +1,140 @@
+/* ==== Layout ==== */
 body {
-    font-family: Arial, sans-serif;
     margin: 0;
-    background: #f8f8f8;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f0f2f5;
+    color: #333;
   }
-  
-  header {
-    text-align: center;
-    background-color: #222;
-    color: white;
-    padding: 1em;
-  }
-  
   .container {
-    display: flex;
-    flex-direction: row;
-    padding: 1em;
-    gap: 1em;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    padding: 24px;
   }
   
+  /* ==== Columns ==== */
   .column {
-    background: white;
-    padding: 1em;
-    border-radius: 8px;
-    width: 30%;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
   
-  button {
-    display: block;
-    margin-top: 0.5em;
-    padding: 0.5em 1em;
-    font-size: 1em;
+  /* ==== Cards ==== */
+  .card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    font-weight: 500;
+  }
+  .card-body {
+    padding: 16px;
+  }
+  
+  /* ==== Buttons ==== */
+  .icon-btn {
+    background: transparent;
     border: none;
-    border-radius: 5px;
-    background-color: #007bff;
-    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+  }
+  .full-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    background: #f2f4f7;
+    color: #555;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .full-btn:hover {
+    background: #e1e3e8;
+  }
+  .export-btn {
+    font-size: 18px;
+  }
+  
+  /* ==== Class Body ==== */
+  .label-title {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #555;
+  }
+  .btn-group {
+    display: flex;
+    gap: 12px;
+  }
+  .action-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    background: #f5f8ff;
+    color: #1254d1;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+  .action-btn span {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+  .action-btn:hover {
+    background: #e1e8ff;
+  }
+  
+  /* ==== Add Class Card ==== */
+  .add-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 0;
+    font-size: 14px;
+    color: #888;
+    background: #fafbfc;
+    border: 2px dashed #ddd;
     cursor: pointer;
   }
-  
-  button:hover {
-    background-color: #0056b3;
+  .add-card:hover {
+    background: #f3f5f8;
   }
   
-  video {
-    width: 100%;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+  /* ==== Advanced details ==== */
+  .advanced summary {
+    cursor: pointer;
+    padding: 8px 0;
+    color: #888;
+    font-size: 13px;
+  }
+  .advanced summary::-webkit-details-marker {
+    display: none;
+  }
+  .advanced[open] summary::after {
+    content: "▾";
+    float: right;
+  }
+  summary::after {
+    content: "▸";
+    float: right;
+  }
+  
+  /* ==== Preview Help Text ==== */
+  .help-text {
+    font-size: 13px;
+    color: #777;
+    margin: 0;
   }
   

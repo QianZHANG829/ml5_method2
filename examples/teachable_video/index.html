@@ -2,42 +2,97 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Teachable Video</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>Teachable Video</h1>
-    <p>Collect, label, and train short video clips with ease.</p>
-  </header>
-
   <main class="container">
-    <!-- Left Column: Classes -->
-    <section class="column" id="class-section">
-      <h2>Classes</h2>
-      <div id="class-list">
-        <!-- Class entries go here -->
+
+    <!-- ===== Classes Column ===== -->
+    <section class="column classes">
+      <!-- Class 1 card -->
+      <div class="card">
+        <header class="card-header">
+          <span>Class 1</span>
+          <button class="icon-btn edit-btn" title="Edit Class">
+            ✎
+          </button>
+        </header>
+        <div class="card-body">
+          <label class="label-title">Add Video Samples:</label>
+          <div class="btn-group">
+            <button class="action-btn">
+              🎥<br><span>Webcam</span>
+            </button>
+            <button class="action-btn">
+              ⬆️<br><span>Upload</span>
+            </button>
+          </div>
+        </div>
       </div>
-      <button id="add-class-btn">+ Add Class</button>
+
+      <!-- Class 2 card -->
+      <div class="card">
+        <header class="card-header">
+          <span>Class 2</span>
+          <button class="icon-btn edit-btn" title="Edit Class">
+            ✎
+          </button>
+        </header>
+        <div class="card-body">
+          <label class="label-title">Add Video Samples:</label>
+          <div class="btn-group">
+            <button class="action-btn">
+              🎥<br><span>Webcam</span>
+            </button>
+            <button class="action-btn">
+              ⬆️<br><span>Upload</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Class placeholder -->
+      <button class="card add-card">
+        + Add a class
+      </button>
     </section>
 
-    <!-- Middle Column: Training -->
-    <section class="column" id="train-section">
-      <h2>Train</h2>
-      <button id="train-btn">Train Model</button>
-      <p id="train-status">Not trained yet</p>
+
+    <!-- ===== Training Column ===== -->
+    <section class="column training">
+      <div class="card">
+        <header class="card-header">
+          <span>Training</span>
+        </header>
+        <div class="card-body">
+          <button class="full-btn">Train Model</button>
+          <details class="advanced">
+            <summary>Advanced</summary>
+            <!-- optional advanced settings here -->
+          </details>
+        </div>
+      </div>
     </section>
 
-    <!-- Right Column: Preview + Export -->
-    <section class="column" id="preview-section">
-      <h2>Preview</h2>
-      <video id="webcam-preview" autoplay muted></video>
-      <p id="prediction-label">Prediction: --</p>
-      <button id="export-btn">Export Dataset</button>
+
+    <!-- ===== Preview Column ===== -->
+    <section class="column preview">
+      <div class="card">
+        <header class="card-header">
+          <span>Preview</span>
+          <button class="icon-btn export-btn" title="Export Model">
+            ⬆️
+          </button>
+        </header>
+        <div class="card-body">
+          <p class="help-text">
+            You must train a model on the left before you can preview it here.
+          </p>
+        </div>
+      </div>
     </section>
+
   </main>
-
-  <script src="script.js"></script>
 </body>
 </html>
