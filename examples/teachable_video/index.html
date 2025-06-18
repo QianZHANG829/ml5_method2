@@ -2,89 +2,97 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Teachable Video</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="container">
 
-    <!-- ===== Classes Column ===== -->
-    <section class="column classes">
-      <!-- Class 1 card -->
-      <div class="card">
-        <header class="card-header">
+  <header class="site-header">
+    <h1>Teachable Video</h1>
+    <p class="site-subtitle">Video-based motion dataset labeling for AI training</p>
+  </header>
+
+  <main class="grid">
+
+    <!-- LEFT COLUMN: Classes -->
+    <section class="column classes-panel">
+      <!-- Class 1 -->
+      <div class="class-card card">
+        <div class="card-header">
           <span>Class 1</span>
-          <button class="icon-btn edit-btn" title="Edit Class">
-            ✎
-          </button>
-        </header>
+          <div class="card-controls">
+            <button class="icon-btn edit-btn" title="Edit Class">✎</button>
+            <button class="icon-btn more-btn" title="More">⋮</button>
+          </div>
+        </div>
         <div class="card-body">
-          <label class="label-title">Add Video Samples:</label>
-          <div class="btn-group">
-            <button class="action-btn">
+          <div class="label-title">Add Video Samples:</div>
+          <div class="sample-btns">
+            <button class="sample-btn webcam-btn">
               🎥<br><span>Webcam</span>
             </button>
-            <button class="action-btn">
-              ⬆️<br><span>Upload</span>
+
+            <!-- 隐藏的文件输入 -->
+            <input id="video-upload-1" type="file" accept="video/*" style="display:none" />
+
+            <!-- 可视 Upload 按钮，点它触发上面的 input -->
+            <button class="sample-btn upload-btn" onclick="document.getElementById('video-upload-1').click()">
+                ⬆️<br><span>Upload</span>
             </button>
+
           </div>
         </div>
       </div>
 
-      <!-- Class 2 card -->
-      <div class="card">
-        <header class="card-header">
+      <!-- Class 2 -->
+      <div class="class-card card">
+        <div class="card-header">
           <span>Class 2</span>
-          <button class="icon-btn edit-btn" title="Edit Class">
-            ✎
-          </button>
-        </header>
+          <div class="card-controls">
+            <button class="icon-btn edit-btn" title="Edit Class">✎</button>
+            <button class="icon-btn more-btn" title="More">⋮</button>
+          </div>
+        </div>
         <div class="card-body">
-          <label class="label-title">Add Video Samples:</label>
-          <div class="btn-group">
-            <button class="action-btn">
+          <div class="label-title">Add Video Samples:</div>
+          <div class="sample-btns">
+            <button class="sample-btn webcam-btn">
               🎥<br><span>Webcam</span>
             </button>
-            <button class="action-btn">
+            <button class="sample-btn upload-btn">
               ⬆️<br><span>Upload</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Add Class placeholder -->
-      <button class="card add-card">
-        + Add a class
-      </button>
+      <!-- “Add a class” placeholder -->
+      <button class="class-add-btn">+ Add a class</button>
     </section>
 
 
-    <!-- ===== Training Column ===== -->
+    <!-- CENTER COLUMN: Training -->
     <section class="column training">
       <div class="card">
-        <header class="card-header">
-          <span>Training</span>
-        </header>
+        <div class="card-header"><span>Training</span></div>
         <div class="card-body">
-          <button class="full-btn">Train Model</button>
+          <button class="full-btn" id="train-btn">Train Model</button>
           <details class="advanced">
             <summary>Advanced</summary>
-            <!-- optional advanced settings here -->
           </details>
         </div>
       </div>
     </section>
 
 
-    <!-- ===== Preview Column ===== -->
+    <!-- RIGHT COLUMN: Preview -->
     <section class="column preview">
       <div class="card">
-        <header class="card-header">
+        <div class="card-header">
           <span>Preview</span>
-          <button class="icon-btn export-btn" title="Export Model">
-            ⬆️
-          </button>
-        </header>
+          <button class="icon-btn export-btn" id="export-model-btn" title="Export Model">⬆️</button>
+        </div>
         <div class="card-body">
           <p class="help-text">
             You must train a model on the left before you can preview it here.
@@ -94,5 +102,8 @@
     </section>
 
   </main>
+
+  <!-- your JavaScript modules -->
+  <script src="script.js"></script>
 </body>
 </html>
