@@ -40,7 +40,7 @@ function preload() {
 
 function setup() {
   // 创建画布
-  createCanvas(vidWidth, vidHeight);
+  //createCanvas(vidWidth, vidHeight);
   
   // 创建文件上传按钮
   //fileInput = createFileInput(handleFile);
@@ -91,42 +91,60 @@ function videoLoaded() {
   // vidWidth = video.width;
   // vidHeight = video.height;
   // resizeCanvas(vidWidth, vidHeight);
-  
-  // 循环播放视频，并开始检测关键点
-  video.loop();
-  bodyPose.detectStart(video, gotPoses);
-  connections = bodyPose.getSkeleton();
-  
-  // 设置控制条容器样式与位置（视频下方）
-  controlBar.size(vidWidth, 40);
-  controlBar.style("background-color", "#ddd");
-  controlBar.position(0, vidHeight + 150);
-  controlBar.style("display", "flex");
-  controlBar.style("align-items", "center");
-  controlBar.style("padding", "0 10px");
-  
-  // 创建进度条（滑块），视频加载后获取 video.duration() 作为最大值
-  videoSlider = createSlider(0, video.duration(), 0, 0.01);
-  videoSlider.parent(controlBar);
-  videoSlider.style("flex-grow", "1");
-  
-  // 当用户拖动滑块时，更新视频当前时间
-  videoSlider.input(() => {
-    let t = videoSlider.value();
-    video.time(t);
-  });
-  
-  // 创建播放/暂停按钮
-  playButton = createButton("Play/Pause");
-  playButton.parent(controlBar);
-  playButton.style("margin-left", "10px");
-  playButton.mousePressed(togglePlay);
+
+
+  // ✅ 获取真实视频宽高，替换默认的 1920x1080
+  video.elt.onloadedmetadata = () => {
+    vidWidth = video.elt.videoWidth;
+    vidHeight = video.elt.videoHeight;
+
+    // ✅ 创建或重设 canvas
+    if (!window.canvasCreated) {
+      createCanvas(vidWidth, vidHeight);
+      window.canvasCreated = true;
+    } else {
+      resizeCanvas(vidWidth, vidHeight);
+    }
+
+    // ✅ 显示控制条
+    setupControlBar();
+
+    // ✅ 启动骨架检测
+    video.loop();
+    bodyPose.detectStart(video, gotPoses);
+    connections = bodyPose.getSkeleton();
+  };
+
+
 }
 
 function modelReady() {
   console.log("BlazePose ready!");
 }
 
+function setupControlBar() {
+    controlBar.size(vidWidth, 40);
+    controlBar.style("background-color", "#ddd");
+    controlBar.position(0, vidHeight + 150);
+    controlBar.style("display", "flex");
+    controlBar.style("align-items", "center");
+    controlBar.style("padding", "0 10px");
+  
+    videoSlider = createSlider(0, video.duration(), 0, 0.01);
+    videoSlider.parent(controlBar);
+    videoSlider.style("flex-grow", "1");
+  
+    videoSlider.input(() => {
+      let t = videoSlider.value();
+      video.time(t);
+    });
+  
+    playButton = createButton("Play/Pause");
+    playButton.parent(controlBar);
+    playButton.style("margin-left", "10px");
+    playButton.mousePressed(togglePlay);
+}
+  
 function draw() {
   // 填充黑色背景
   background(0);
@@ -287,3 +305,5 @@ function togglePlay() {
     }
   }
 }
+
+window.handleFile = handleFile;
