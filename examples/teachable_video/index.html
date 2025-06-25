@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Teachable Video</title>
 
-  <!-- p5.js -->
+  <!-- p5.js + Tone.js + ml5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-
-  <!-- ml5.js -->
   <script src="../../dist/ml5.js"></script>
 
   <link rel="stylesheet" href="style.css" />
@@ -35,30 +33,11 @@
         <div class="card-body">
           <div class="label-title">Add Video Samples:</div>
           <div class="sample-btns">
-            <button class="sample-btn webcam-btn">
-              🎥<br><span>Webcam</span>
-            </button>
+            <button class="sample-btn webcam-btn">🎥<br><span>Webcam</span></button>
             <input id="video-upload-1" type="file" accept="video/*" style="display:none" />
             <button class="sample-btn upload-btn" onclick="document.getElementById('video-upload-1').click()">
               ⬆️<br><span>Upload</span>
             </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="class-card card">
-        <div class="card-header">
-          <span>Class 2</span>
-          <div class="card-controls">
-            <button class="icon-btn edit-btn" title="Edit Class">✎</button>
-            <button class="icon-btn more-btn" title="More">⋮</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="label-title">Add Video Samples:</div>
-          <div class="sample-btns">
-            <button class="sample-btn webcam-btn">🎥<br><span>Webcam</span></button>
-            <button class="sample-btn upload-btn">⬆️<br><span>Upload</span></button>
           </div>
         </div>
       </div>
@@ -72,7 +51,6 @@
         <div class="card-header"><span>Training</span></div>
         <div class="card-body">
           <button class="full-btn" id="train-btn">Train Model</button>
-          <details class="advanced"><summary>Advanced</summary></details>
         </div>
       </div>
     </section>
@@ -82,7 +60,7 @@
       <div class="card">
         <div class="card-header">
           <span>Preview</span>
-          <button class="icon-btn export-btn" id="export-model-btn" title="Export Model">⬆️</button>
+          <button class="icon-btn export-btn" id="export-model-btn" title="Export Model">⬇️</button>
         </div>
         <div class="card-body">
           <p class="help-text">You must train a model on the left before you can preview it here.</p>
@@ -91,15 +69,40 @@
     </section>
   </main>
 
-  <!-- 引入你写的 uploader.js -->
-  <script src="js/uploader.js"></script>
+  <!-- 🎯 Canvas 视频+识别 展示区域 -->
+  <section class="canvas-preview">
+    <div id="canvas-container" class="card" style="margin: 2rem auto; text-align: center;"></div>
+  </section>
 
-  <!-- 确保绑定上传逻辑 -->
+  <!-- 你已有的 JS 代码，保持不动 -->
+  <script src="js/collect.js"></script>
+
+  <!-- 新增绑定逻辑：上传视频并展示 -->
   <script>
+    // 上传视频 → 调用 sketch.js 中的 handleFile(file)
     document.getElementById('video-upload-1')
       .addEventListener('change', e => {
         const file = e.target.files[0];
-        if (file) handleFile(file);  // 调用 uploader.js 中挂到 window 的 handleFile
+        if (file) {
+          handleFile(file);
+        }
+      });
+
+    // 训练按钮
+    document.getElementById('train-btn')
+      .addEventListener('click', () => {
+        if (typeof classifier !== 'undefined') {
+          classifier.normalizeData();
+          classifier.train({ epochs: 5 }, finishedTraining);
+        }
+      });
+
+    // 导出数据
+    document.getElementById('export-model-btn')
+      .addEventListener('click', () => {
+        if (typeof classifier !== 'undefined') {
+          classifier.saveData();
+        }
       });
   </script>
 </body>

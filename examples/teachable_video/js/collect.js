@@ -70,13 +70,17 @@ function setup() {
   console.log("Setup done. Press A/B to record, S to save.");
 }
 
-function handleFile(file) {
-  if (file.type === 'video') {
+function handleFile(file) {  
+  console.log("📦 handleFile 被调用，file.type:", file.type);
+
+  if (file.type?.startsWith('video')) {
     // 使用上传的视频文件创建 video 对象，加载完成后调用 videoLoaded
-    video = createVideo([file.data], videoLoaded);
+    const videoBlobURL = URL.createObjectURL(file); // ✅ 显式创建浏览器视频地址
+    video = createVideo([videoBlobURL], videoLoaded);
     video.hide(); // 隐藏默认的视频 DOM 元素
   } else {
-    console.log("请上传视频文件");
+    // console.log("请上传视频文件");
+    console.warn("❌ 文件类型不合法，请上传视频文件");
   }
 }
 
@@ -93,14 +97,16 @@ function videoLoaded() {
   // resizeCanvas(vidWidth, vidHeight);
 
 
-  // ✅ 获取真实视频宽高，替换默认的 1920x1080
-  video.elt.onloadedmetadata = () => {
-    vidWidth = video.elt.videoWidth;
-    vidHeight = video.elt.videoHeight;
+    // 1️⃣ 取得真正尺寸
+    vidWidth  = video.elt.videoWidth  || 640;
+    vidHeight = video.elt.videoHeight || 480;
+    console.log("size =", vidWidth, vidHeight);
 
-    // ✅ 创建或重设 canvas
+    // 2️⃣ 设置画布大小
     if (!window.canvasCreated) {
-      createCanvas(vidWidth, vidHeight);
+      //createCanvas(vidWidth, vidHeight);
+      const canvas = createCanvas(vidWidth, vidHeight);
+      canvas.parent("canvas-container");  // 将画布放入指定容器
       window.canvasCreated = true;
     } else {
       resizeCanvas(vidWidth, vidHeight);
@@ -111,39 +117,57 @@ function videoLoaded() {
 
     // ✅ 启动骨架检测
     video.loop();
+    video.volume(0);         // 静音，避免浏览器阻止自动播放
     bodyPose.detectStart(video, gotPoses);
     connections = bodyPose.getSkeleton();
-  };
 
+    video.elt.addEventListener('timeupdate', () => {
+      videoSlider.value(video.time());
+    });
+    
+
+    console.log("🖼️ canvas ready, pose detection started");
 
 }
+
 
 function modelReady() {
   console.log("BlazePose ready!");
 }
 
-function setupControlBar() {
-    controlBar.size(vidWidth, 40);
-    controlBar.style("background-color", "#ddd");
-    controlBar.position(0, vidHeight + 150);
-    controlBar.style("display", "flex");
-    controlBar.style("align-items", "center");
-    controlBar.style("padding", "0 10px");
-  
-    videoSlider = createSlider(0, video.duration(), 0, 0.01);
-    videoSlider.parent(controlBar);
-    videoSlider.style("flex-grow", "1");
-  
-    videoSlider.input(() => {
-      let t = videoSlider.value();
-      video.time(t);
-    });
-  
-    playButton = createButton("Play/Pause");
-    playButton.parent(controlBar);
-    playButton.style("margin-left", "10px");
-    playButton.mousePressed(togglePlay);
+function setupControlBar () {
+  // ⬇︎ 1. 把控制条放到同一个容器里
+  controlBar.parent('canvas-container');
+
+  // ⬇︎ 2. 取消绝对定位，改为普通块状 + 100% 宽
+  controlBar.style('position', 'relative');
+  controlBar.style('width',     '100%');
+  controlBar.style('background','#ddd');
+  controlBar.style('display',   'flex');
+  controlBar.style('align-items','center');
+  controlBar.style('padding',   '6px 10px');
+  controlBar.style('gap',       '8px');   // 额外：按钮间距
+
+  // ⬇︎ 3. 不再用 .position()（删掉或注释）
+  // controlBar.position(0, vidHeight + 150);
+
+  /* ---- 下面保持不变 ---- */
+  videoSlider = createSlider(0, video.duration(), 0, 0.01);
+  videoSlider.parent(controlBar);
+  videoSlider.style('flex-grow', '1');
+
+
+  // ⬇︎ 新增：拖动 slider 时，让视频跳到对应时间
+  videoSlider.input(() => {
+    video.time(videoSlider.value());   // ← 关键一句
+  });
+
+
+  playButton = createButton('Play / Pause');
+  playButton.parent(controlBar);
+  playButton.mousePressed(togglePlay);
 }
+
   
 function draw() {
   // 填充黑色背景
@@ -165,9 +189,9 @@ function draw() {
     image(video, xOffset, yOffset, scaledWidth, scaledHeight);
   
     // 自动更新进度条，使其跟随视频播放
-    if (video && videoSlider && video.time && video.duration) {
-      videoSlider.value(video.time());
-    }
+    // if (video && videoSlider && video.time && video.duration) {
+    //   videoSlider.value(video.time());
+    // }
   
     // 绘制检测到的关键点和骨架连线（按照相同的缩放比例与偏移量）
     for (let i = 0; i < poses.length; i++) {
@@ -306,4 +330,15 @@ function togglePlay() {
   }
 }
 
+
+// 暴露关键控制函数给外部 HTML 使用
 window.handleFile = handleFile;
+window.startCollection = startCollection;
+window.trainModel = () => {
+  classifier.normalizeData();
+  classifier.train({ epochs: 5 }, finishedTraining);
+};
+window.exportData = () => {
+  classifier.saveData();
+};
+

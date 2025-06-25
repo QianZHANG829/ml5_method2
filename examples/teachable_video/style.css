@@ -113,6 +113,32 @@ body {
     border-color: #bbb;
   }
   
+  
+
+  /* 让容器只负责居中、占行 */
+  .canvas-holder{
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0;
+  }
+
+  /* 容器宽度上限，可自行调整 */
+  #canvas-container{
+    max-width: 80%;      /* 960px 或 70vw 也可 */
+    margin: 0 auto;
+  }
+
+  /* 关键：直接限制 canvas 自身 */
+  #canvas-container canvas{
+    max-width : 100%;    /* 绝对不超过容器宽 */
+    max-height: 80vh;    /* 绝对不超过视口高 80% */
+    width : auto !important;
+    height: auto !important;
+    display: block;
+  }
+
+
   /* ==== Training Panel ==== */
   .full-btn {
     width: 100%;
