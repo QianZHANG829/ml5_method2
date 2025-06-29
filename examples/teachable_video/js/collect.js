@@ -24,8 +24,8 @@ let controlBar;         // 控制条容器
 let vidWidth = 1920;
 let vidHeight = 1080;
 
-const FPS = 30;
-const CAPTURE_FRAMES = 15 * FPS; // 2秒 x 30帧
+let FPS = 30;
+let CAPTURE_FRAMES = 15 * FPS; 
 
 // 全局输入名称数组（33 个关键点，每个有 x 和 y，共66个输入）
 let inputNames = [];
@@ -306,7 +306,7 @@ function keyPressed() {
 function startCollection(label) {
   console.log(`Will start collecting label=${label} in 1s...`);
   setTimeout(() => {
-    console.log(`Recording 5s for label=${label}...`);
+    console.log(`Recording ${CAPTURE_FRAMES/FPS}s for label=${label}...`);
     collecting = true;
     collectingLabel = label;
     sequence = [];
@@ -342,3 +342,14 @@ window.exportData = () => {
   classifier.saveData();
 };
 
+
+/* ============================================================
+   可在运行期改写 FPS / CAPTURE_FRAMES   —— 直接贴到文件末尾
+   ============================================================ */
+   function setFpsAndDuration(newFps, newDuration){
+    FPS            = newFps;
+    CAPTURE_FRAMES = newFps * newDuration;
+    console.log(`⚙️ FPS=${FPS}, CAPTURE_FRAMES=${CAPTURE_FRAMES}`);
+  }
+  window.setFpsAndDuration = setFpsAndDuration;   // ← 一定放到全局
+  
