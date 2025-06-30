@@ -265,12 +265,21 @@ function gotPoses(results) {
     // 保存当前帧数据到时序数组中
     sequence.push(frameObj);
     frameCount++;
+
+    /* ★★★ 把数字写到工具条 ★★★ */
+    showProgress(`${frameCount} / ${CAPTURE_FRAMES}`);
+
     console.log("collecting", collecting, "frameCount", frameCount, "poses.length", poses.length);
+
+
+
     
     // 当录制帧数达到设定值后，结束录制并将数据添加到模型中
     if (frameCount >= CAPTURE_FRAMES) {
       collecting = false;
-      console.log(`Finished collecting for label=${collectingLabel}, got ${sequence.length} frames.`);
+      showProgress(`✅ ${CAPTURE_FRAMES} / ${CAPTURE_FRAMES} Done!`);   // ★
+
+
       classifier.addData(sequence, { label: collectingLabel });
       sequence = [];
       frameCount = 0;
@@ -311,7 +320,11 @@ function startCollection(label) {
     collectingLabel = label;
     sequence = [];
     frameCount = 0;
+
+    showProgress(`0 / ${CAPTURE_FRAMES}`);   // ← ★ 新增
+
   }, 100);
+
 }
 
 function finishedTraining() {
@@ -329,6 +342,13 @@ function togglePlay() {
     }
   }
 }
+
+/* 用于安全地写进度文字，element 不存在时什么也不做 */
+function showProgress(text){
+  const el = document.getElementById('collect-progress');
+  if (el) el.textContent = text;
+}
+
 
 
 // 暴露关键控制函数给外部 HTML 使用

@@ -22,12 +22,46 @@
   <main class="grid">
     <!-- LEFT COLUMN: Classes -->
     <section class="column classes-panel">
+
+      <!-- class 卡片模板（隐藏） -->
+      <template id="class-card-template">
+        <div class="class-card card">
+          <div class="card-header">
+            <span>Class X</span>
+            <div class="card-controls">
+              <button class="icon-btn edit-btn"  title="Edit Class">✎</button>
+              <button class="icon-btn more-btn"  title="More">⋮</button>
+              <ul class="more-menu">
+                <li class="delete-class">Delete Class</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="label-title">Add Video Samples:</div>
+            <div class="sample-btns">
+              <button class="sample-btn webcam-btn">🎥<br><span>Webcam</span></button>
+
+              <!-- 独立 input，用 JS 动态设置 id -->
+              <input type="file" accept="video/*" style="display:none">
+
+              <button class="sample-btn upload-btn">⬆️<br><span>Upload</span></button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+
+      <!-- ⭐  Class 1 卡片（保留原结构） -->
       <div class="class-card card">
         <div class="card-header">
           <span>Class 1</span>
           <div class="card-controls">
             <button class="icon-btn edit-btn" id="edit-class-btn" title="Edit Class">✎</button>
             <button class="icon-btn more-btn" title="More">⋮</button>
+            <ul class="more-menu">
+              <li class="delete-class">Delete class</li>
+            </ul>            
+            
           </div>
         </div>
         <div class="card-body">
@@ -42,7 +76,11 @@
         </div>
       </div>
 
+   
+
+
       <button class="class-add-btn">+ Add a class</button>
+
     </section>
 
     <!-- CENTER COLUMN: Training -->
@@ -86,6 +124,11 @@
 
       <button id="collect-btn" class="collect-btn">Start to collect</button>
 
+      <!-- ★ 新增：进度文字容器 -->
+      <span id="collect-progress"
+      style="margin-left:12px;font-size:14px;color:#555;"></span>
+
+
   </div>
 
 
@@ -94,6 +137,42 @@
 
   <!-- 你已有的 JS 代码，保持不动 -->
   <script src="js/collect.js"></script>
+
+  <script>
+    /* ========= 给一张卡片绑定“⋮”菜单 ========= */
+    function bindMenu(card){
+      const moreBtn = card.querySelector('.more-btn');
+      const menu    = card.querySelector('.more-menu');
+      if(!moreBtn || !menu) return;
+    
+      /* ① 点击 ⋮ 显示 / 隐藏菜单 */
+      moreBtn.addEventListener('click',  (ev)=>{
+        ev.stopPropagation();
+        // 先把别的菜单都收起
+        document.querySelectorAll('.more-menu').forEach(m=>{
+          if(m!==menu) m.style.display='none';
+        });
+        menu.style.display = (menu.style.display==='block') ? 'none':'block';
+      });
+    
+      /* ② 点击 Delete class */
+      const delItem = menu.querySelector('.delete-class');
+      if(delItem){
+        delItem.addEventListener('click', ()=>{
+          if(confirm('Delete this class?')){
+            card.remove();
+          }
+        });
+      }
+    
+      /* ③ 点击页面任意空白处，收起菜单 */
+      document.addEventListener('click', ()=> menu.style.display='none');
+      
+    }
+    /* 让页面现有的 Class 1 生效 */
+    bindMenu(document.querySelector('.class-card'));
+  </script>
+    
 
   <!-- 新增绑定逻辑：上传视频并展示 -->
   <script>
@@ -141,7 +220,7 @@
       if(!className) return;
     
       // 更新显示
-      document.querySelector('.card-header span').textContent = className;
+      document.querySelector('.class-card .card-header span').textContent = className;
       document.getElementById('class-name').textContent       = className;
     });
     
@@ -151,15 +230,72 @@
     document.getElementById('collect-btn').addEventListener('click', ()=>{
       const fps = +document.getElementById('fps-input').value || 30;
       const dur = +document.getElementById('dur-input').value || 15;
+
+    
       
       /* 关键：通过 window 访问 collect.js 暴露的函数 */
       window.setFpsAndDuration(fps, dur);         // 修改 FPS & CAPTURE_FRAMES
       startCollection(className);       // <-- 把当前 className 传进去
     });
 
-    
-    
 
   </script>
+
+  <script>
+   
+
+    /* ① 对已有的 Class 1 调用一次 */
+    bindMenu(document.querySelector('.class-card'));
+
+
+
+    /* 计数器：Class 1 已经存在，从 2 开始 */
+    let classCount = 1;
+    
+    /* 点击 “Add a class” */
+    document.querySelector('.class-add-btn').addEventListener('click', ()=>{
+    
+      classCount++;
+      const label   = `Class ${classCount}`;
+      const tpl     = document.getElementById('class-card-template');
+      const cardEl  = tpl.content.firstElementChild.cloneNode(true);   // 深拷贝
+    
+      /* 更新标题文字 */
+      cardEl.querySelector('.card-header span').textContent = label;
+    
+      /* 给 upload input / button 配唯一 id */
+      const inputEl  = cardEl.querySelector('input[type=file]');
+      const uploadBt = cardEl.querySelector('.upload-btn');
+    
+      const uid = `video-upload-${classCount}`;
+      inputEl.id = uid;
+      uploadBt.onclick = ()=> document.getElementById(uid).click();
+    
+      /* 绑定文件选择事件 */
+      inputEl.addEventListener('change', e=>{
+        const file = e.target.files[0];
+        if (file) handleFile(file);
+      });
+    
+      /* ✎ 按钮改名（与 Class 1 的逻辑相同） */
+      cardEl.querySelector('.edit-btn').addEventListener('click', function (){
+        const card    = this.closest('.class-card');                 // 当前这张卡片
+        const spanEl  = card.querySelector('.card-header span');     // 标题位置
+        const newName = prompt("Rename this class:", spanEl.textContent);
+        if (newName){
+          spanEl.textContent = newName.trim();
+        }
+      });
+
+      /* ……克隆 cardEl 的代码 …… */
+      bindMenu(cardEl);  
+      
+    
+      /* 将新卡片插入 Classes 列（在 “Add a class” 按钮前）*/
+      document.querySelector('.classes-panel')
+              .insertBefore(cardEl, document.querySelector('.class-add-btn'));
+    });
+  </script>
+    
 </body>
 </html>

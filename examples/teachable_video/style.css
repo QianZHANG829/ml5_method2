@@ -56,10 +56,17 @@ body {
     flex-direction: column;
     gap: 16px;
   }
-  .card-controls {
-    display: flex;
-    gap: 8px;
+  
+  .card-controls{
+    display:flex;
+    gap:8px;
+  
+    /* ★ 新增：为绝对定位的菜单提供参考点 */
+    position:relative;
   }
+  
+
+
   .icon-btn {
     background: transparent;
     border: none;
@@ -138,6 +145,16 @@ body {
     display: block;
   }
 
+  /* —— ★ 居中工具条 ★ —— */
+  #annot-toolbar{
+    width: 100%;                 /* 撑满父容器 */
+    display: flex;               /* 用 flex 布局 */
+    justify-content: center;     /* 水平居中所有子元素 */
+    align-items: center;         /* 垂直居中（行内） */
+    gap: 12px;                   /* 每个控件之间留点间距 */
+    margin-top: 8px;             /* 距离进度条略微分开 */
+  }
+
 
   /* ==== Training Panel ==== */
   .full-btn {
@@ -189,4 +206,35 @@ body {
     background:#2563eb;color:#fff;cursor:pointer
   }
   .collect-btn:hover{background:#1e4fd1}
+  
+  /* 三点下拉菜单样式 */
+  .more-menu{
+    position:absolute;
+    top:  100%;           /* 正好贴在按钮下方 */
+    right:0;              /* 与右边对齐 */
+    margin-top:6px;       /* 下移一点点留缝隙 */
+  
+    min-width:160px;
+    background:#fff;
+    border:1px solid #dadce0;
+    border-radius:8px;
+    box-shadow:0 4px 10px rgba(0,0,0,.12);
+    padding:6px 0;
+    list-style:none;
+  
+    display:none;         /* 默认隐藏 */
+    z-index:1000;
+  }
+  
+  .more-menu li{
+    padding:10px 16px;
+    font-size:14px;
+    color:#202124;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  
+  .more-menu li:hover{
+    background:#f1f3f4;
+  }
   
