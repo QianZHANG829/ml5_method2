@@ -33,6 +33,11 @@ let inputNames = [];
 // 模型加载状态变量（可选）
 let confidence = null;
 
+//存储每次 startCollection() 完成的标注时间段：
+let labeledSegments = []; // 每段形如 { lab  l: 'Class A', start: 2.0, end: 17.0 }
+let playRow;
+
+
 function preload() {
   // 加载 BlazePose 模型，加载完成后调用 modelReady
   bodyPose = ml5.bodyPose("BlazePose", modelReady);
@@ -84,50 +89,66 @@ function handleFile(file) {
   }
 }
 
-function videoLoaded() {
+function videoLoaded () {
   if (!video) {
-    console.warn("video is not loaded");
+    console.warn('video is not loaded');
     return;
   }
-  console.log("video has been loaded");
-  
-  // // 获取视频的原始宽高，并调整画布大小
-  // vidWidth = video.width;
-  // vidHeight = video.height;
-  // resizeCanvas(vidWidth, vidHeight);
 
+  /* ① 先根据总时长刷新时间刻度文字 */
+  updateTimelineLabels();
+  console.log('video has been loaded');
 
-    // 1️⃣ 取得真正尺寸
-    vidWidth  = video.elt.videoWidth  || 640;
-    vidHeight = video.elt.videoHeight || 480;
-    console.log("size =", vidWidth, vidHeight);
+  /* ② 取得视频实际分辨率 → 设置 canvas */
+  vidWidth  = video.elt.videoWidth  || 640;
+  vidHeight = video.elt.videoHeight || 480;
 
-    // 2️⃣ 设置画布大小
-    if (!window.canvasCreated) {
-      //createCanvas(vidWidth, vidHeight);
-      const canvas = createCanvas(vidWidth, vidHeight);
-      canvas.parent("canvas-container");  // 将画布放入指定容器
-      window.canvasCreated = true;
-    } else {
-      resizeCanvas(vidWidth, vidHeight);
-    }
+  if (!window.canvasCreated) {
+    const canvas = createCanvas(vidWidth, vidHeight);
+    canvas.parent('canvas-container');
+    window.canvasCreated = true;
+  } else {
+    resizeCanvas(vidWidth, vidHeight);
+  }
 
-    // ✅ 显示控制条
-    setupControlBar();
+  /* ③ 创建进度条 + 播放按钮行（会生成全局变量 videoSlider / playRow） */
+  setupControlBar();
 
-    // ✅ 启动骨架检测
-    video.loop();
-    video.volume(0);         // 静音，避免浏览器阻止自动播放
-    bodyPose.detectStart(video, gotPoses);
-    connections = bodyPose.getSkeleton();
+  /* ④ 统一宽度：以 videoSlider 的实际 clientWidth 为准 */
+  setTimeout(() => {
+    const sliderDOM = videoSlider?.elt;               // p5 Slider 对应 <input>
+    if (!sliderDOM) return;
 
-    video.elt.addEventListener('timeupdate', () => {
-      videoSlider.value(video.time());
-    });
-    
+    const syncWidth = sliderDOM.clientWidth + 'px';
 
-    console.log("🖼️ canvas ready, pose detection started");
+    // 时间轴
+    document.getElementById('timeline-container').style.width = syncWidth;
 
+    // 播放按钮行
+    if (typeof playRow !== 'undefined') playRow.style('width', syncWidth);
+
+    // FPS / duration / Start to collect 工具条
+    const annotBar = document.getElementById('annot-toolbar');
+    if (annotBar) annotBar.style.width = syncWidth;
+  }, 0);  // 下一帧读取，确保 slider 已渲染完
+
+  /* ⑤ 启动骨架检测 */
+  video.loop();
+  video.volume(0);
+  bodyPose.detectStart(video, gotPoses);
+
+  video.elt.addEventListener('timeupdate', () => {
+    videoSlider.value(video.time());
+  });
+
+  /* ⑥ 让 canvas 点击即可切换播放/暂停 */
+  const canvasEl = document.querySelector('canvas');
+  if (canvasEl) {
+    canvasEl.style.cursor = 'pointer';
+    canvasEl.addEventListener('click', togglePlay);
+  }
+
+  console.log('🖼️ canvas ready, pose detection started');
 }
 
 
@@ -163,9 +184,19 @@ function setupControlBar () {
   });
 
 
-  playButton = createButton('Play / Pause');
-  playButton.parent(controlBar);
+  // playButton = createButton('Play / Pause');
+  playRow = createDiv();
+  playRow.parent('canvas-container'); // 添加到视频底部
+  playRow.style('display', 'flex');
+  playRow.style('justify-content', 'center');
+  playRow.style('marginTop', '4px');
+
+  playButton = createButton('⏯ Play / Pause');
+  playButton.parent(playRow);
   playButton.mousePressed(togglePlay);
+
+
+
 }
 
   
@@ -271,11 +302,20 @@ function gotPoses(results) {
 
     console.log("collecting", collecting, "frameCount", frameCount, "poses.length", poses.length);
 
-
-
     
     // 当录制帧数达到设定值后，结束录制并将数据添加到模型中
     if (frameCount >= CAPTURE_FRAMES) {
+      const startTime = video.time();
+      const endTime = startTime + (CAPTURE_FRAMES / FPS);
+
+      labeledSegments.push({
+        label: collectingLabel,
+        start: startTime,
+        end: endTime,
+      });
+
+      updateAnnotationTimeline(); // <-- 每次更新 UI
+
       collecting = false;
       showProgress(`✅ ${CAPTURE_FRAMES} / ${CAPTURE_FRAMES} Done!`);   // ★
 
@@ -347,6 +387,113 @@ function togglePlay() {
 function showProgress(text){
   const el = document.getElementById('collect-progress');
   if (el) el.textContent = text;
+}
+
+// 更新标注时间轴
+function updateAnnotationTimeline() {
+  const container = document.getElementById('label-timeline');
+  if (!container) {
+    console.warn("⚠️ label-timeline DOM 不存在，跳过可视化更新");
+    return;
+  }
+
+  container.innerHTML = '';
+
+  const duration = video.duration();
+
+  // 初始化放置段落
+  const rowHeight = 12;
+  const placedSegments = [];
+
+  labeledSegments.forEach((seg, index) => {
+    const div = document.createElement('div');
+
+    div.className = 'label-block';
+    const percentLeft = (seg.start / duration) * 100;
+    const percentWidth = ((seg.end - seg.start) / duration) * 100;
+    const row = getSegmentRow(seg, placedSegments, duration);
+    // 自动堆叠到不同的行，避免时间重叠区域覆盖
+
+    div.style.top = `${row * rowHeight}px`;
+    div.style.height = `${rowHeight - 2}px`;
+
+
+    div.style.position = 'absolute';
+    div.style.left = `${percentLeft}%`;
+    div.style.width = `${percentWidth}%`;
+    div.style.height = '100%';
+    div.style.backgroundColor = getColorForLabel(seg.label); // 用不同颜色区分类
+    div.style.opacity = '0.7';
+    div.title = `${seg.label} (${seg.start.toFixed(1)}s - ${seg.end.toFixed(1)}s)`;
+
+    // 添加删除按钮
+    const closeBtn = document.createElement('span');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.right = '2px';
+    closeBtn.style.top = '2px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.color = '#fff';
+    closeBtn.style.fontSize = '12px';
+    closeBtn.addEventListener('click', () => {
+      labeledSegments.splice(index, 1); // 删除这段
+      updateAnnotationTimeline(); // 重绘
+    });
+    div.appendChild(closeBtn);
+
+    div.addEventListener('click', () => {
+      if (video && typeof video.time === 'function') {
+        video.time(seg.start);
+      }
+    });    
+
+    container.appendChild(div);
+  });
+}
+
+function getColorForLabel(label) {
+  const palette = {
+    "Sad & Inner Struggle": "#2196f3",
+    "Freedom & Liberation": "#4caf50",
+    "Conflict & Tension": "#f44336"
+  };
+  // return palette[label] || '#888';
+  return 'rgba(33, 150, 243, 0.7)'; // 蓝色 + 70% 透明度
+
+}
+
+function updateTimelineLabels() {
+  const container = document.getElementById('timeline-labels');
+  if (!container || !video || typeof video.duration !== 'function') return;
+
+  const duration = video.duration();
+  container.innerHTML = '';
+
+  const steps = 10; // 分10段
+  for (let i = 0; i <= steps; i++) {
+    const t = (duration / steps) * i;
+    const label = document.createElement('div');
+    label.textContent = `${t.toFixed(1)}s`;
+    label.style.flex = '1';
+    label.style.textAlign = 'center';
+    container.appendChild(label);
+  }
+}
+
+function getSegmentRow(newSeg, placedSegments = [], duration) {
+  let row = 0;
+  while (true) {
+    const overlap = placedSegments[row]?.some(existing => {
+      return !(newSeg.end <= existing.start || newSeg.start >= existing.end);
+    });
+
+    if (!overlap) break;
+    row++;
+  }
+
+  if (!placedSegments[row]) placedSegments[row] = [];
+  placedSegments[row].push(newSeg);
+  return row;
 }
 
 

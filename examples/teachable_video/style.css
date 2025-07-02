@@ -237,4 +237,10 @@ body {
   .more-menu li:hover{
     background:#f1f3f4;
   }
-  
+    
+  #canvas-container,
+  #timeline-container,
+  .playRow {
+    margin: 0 auto;
+    text-align: center;
+  }

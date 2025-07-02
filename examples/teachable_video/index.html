@@ -113,7 +113,7 @@
 
 
     <!-- 🔹① 新加：标注工具条 -->
-    <div id="annot-toolbar" class="annot-bar">
+    <div id="annot-toolbar" class="annot-bar" >
       <span id="class-name">Class 1</span>
 
       fps =
@@ -127,6 +127,21 @@
       <!-- ★ 新增：进度文字容器 -->
       <span id="collect-progress"
       style="margin-left:12px;font-size:14px;color:#555;"></span>
+    </div>
+
+    <!-- Timeline 区块，跟 canvas 对齐 -->
+    <div id="timeline-container" style="margin: 0 auto; width: fit-content;">
+      <!-- 🟦 时间轴组件：包含刻度 + 区块 -->
+      <div id="timeline-wrapper" style="position: relative; height: 36px; margin-top: 8px;">
+        <!-- 灰色背景轨道 -->
+        <div id="timeline-track" style="position: absolute; top: 0; height: 12px; width: 100%; background: #ddd; border-radius: 3px;"></div>
+        <!-- ✅ 标注区块容器（唯一的 label-timeline） -->
+        <div id="label-timeline" style="position: absolute; top: 0; height: 12px; width: 100%;"></div>
+        <!-- 时间刻度标签 -->
+        <div id="timeline-labels" style="position: absolute; top: -14px; font-size: 10px; color: #666; width: 100%; display: flex; justify-content: space-between;"></div>
+      </div>
+    </div>
+
 
 
   </div>
@@ -137,6 +152,7 @@
 
   <!-- 你已有的 JS 代码，保持不动 -->
   <script src="js/collect.js"></script>
+  <!-- <script src="js/labeler.js"></script> -->
 
   <script>
     /* ========= 给一张卡片绑定“⋮”菜单 ========= */
