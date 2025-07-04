@@ -1,204 +1,101 @@
-/* ==== Base Styles ==== */
-body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #f0f2f5;
-    color: #333;
-  }
-  .site-header {
-    background: #222;
-    color: #fff;
-    text-align: center;
-    padding: 1rem;
-  }
-  .site-subtitle {
-    margin: 0.5rem 0 0;
-    font-size: 0.95rem;
-    color: #ddd;
+/* =========================================================
+   ① 基础（Reset & 全局）
+   ========================================================= */
+   body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    background:#f0f2f5;
+    color:#333;
   }
   
-  /* ==== Three-Column Grid ==== */
-  main.grid {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr;
-    gap: 1rem;
-    padding: 1rem;
+  .site-header{
+    background:#222;
+    color:#fff;
+    text-align:center;
+    padding:1rem;
   }
-  .column {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+  .site-subtitle{margin:.5rem 0 0;font-size:.95rem;color:#ddd}
+  
+  /* =========================================================
+     ② 主栅格 —— 3 列：260px | 1fr | 1fr
+     ========================================================= */
+  main.grid{
+    display:grid;
+    grid-template-columns:260px minmax(0,1fr) minmax(0,1fr);
+    gap:1rem;
+    padding:1rem;
   }
   
-  /* ==== Generic Card ==== */
-  .card {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    overflow: hidden;
-  }
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-    border-bottom: 1px solid #e0e0e0;
-    font-weight: 500;
-  }
-  .card-body {
-    padding: 16px;
+  /* 让 <section class="canvas-preview …"> 只占第 2–3 列
+     --------------------------------------------------------- */
+  section.canvas-preview.span-2-3{
+    grid-column:2 / 4 !important;     /* ← 关键：2-3 列 */
+    text-align:center;
+    width:100%;
   }
   
-  /* ==== Classes Panel ==== */
-  .classes-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  /* 栅格子列公共样式 */
+  .column{display:flex;flex-direction:column;gap:1rem}
+  
+  /* =========================================================
+     ③ 卡片（Card）通用
+     ========================================================= */
+  .card{
+    background:#fff;
+    border:1px solid #e0e0e0;
+    border-radius:8px;
+    box-shadow:0 1px 3px rgb(0 0 0 / .08);
+    overflow:hidden;
+  }
+  .card-header{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 16px;border-bottom:1px solid #e0e0e0;font-weight:500;
+  }
+  .card-body{padding:16px}
+  
+  /* =========================================================
+     ④ Classes 列（左栏）
+     ========================================================= */
+  /* header 高度 + grid gap 估算一下，大概 120-140px */
+  .classes-panel{
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
   }
   
-  .card-controls{
-    display:flex;
-    gap:8px;
+  .card-controls{display:flex;gap:8px;position:relative}
   
-    /* ★ 新增：为绝对定位的菜单提供参考点 */
-    position:relative;
-  }
+  .icon-btn{background:0 0;border:none;font-size:16px;color:#888;cursor:pointer}
+  .icon-btn:hover{color:#333}
   
-
-
-  .icon-btn {
-    background: transparent;
-    border: none;
-    font-size: 16px;
-    color: #888;
-    cursor: pointer;
-  }
-  .icon-btn:hover {
-    color: #333;
-  }
-  .label-title {
-    font-size: 14px;
-    color: #555;
-    margin-bottom: 12px;
-  }
-  .sample-btns {
-    display: flex;
-    gap: 12px;
-  }
-  .sample-btn {
-    flex: 1;
-    background: #f5f8ff;
-    border: 1px solid #d0d7ff;
-    border-radius: 6px;
-    padding: 16px 0;
-    text-align: center;
-    color: #1254d1;
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1.2;
-  }
-  .sample-btn span {
-    display: block;
-    margin-top: 6px;
-    font-size: 13px;
-  }
-  .sample-btn:hover {
-    background: #e1e8ff;
-  }
-  .class-add-btn {
-    background: transparent;
-    border: 2px dashed #ccc;
-    border-radius: 8px;
-    color: #888;
-    padding: 20px;
-    font-size: 14px;
-    cursor: pointer;
-  }
-  .class-add-btn:hover {
-    background: #fafbfc;
-    border-color: #bbb;
-  }
+  .label-title{font-size:14px;color:#555;margin-bottom:12px}
   
+  .sample-btns{display:flex;gap:12px}
+  .sample-btn{
+    flex:1;background:#f5f8ff;border:1px solid #d0d7ff;border-radius:6px;
+    padding:16px 0;text-align:center;color:#1254d1;cursor:pointer;font-size:14px
+  }
+  .sample-btn span{display:block;margin-top:6px;font-size:13px}
+  .sample-btn:hover{background:#e1e8ff}
   
-
-  /* 让容器只负责居中、占行 */
-  .canvas-holder{
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: center;
-    padding: 1rem 0;
+  .class-add-btn{
+    background:transparent;border:2px dashed #ccc;border-radius:8px;
+    color:#888;padding:20px;font-size:14px;cursor:pointer
   }
-
-  /* 容器宽度上限，可自行调整 */
-  #canvas-container{
-    max-width: 80%;      /* 960px 或 70vw 也可 */
-    margin: 0 auto;
-  }
-
-  /* 关键：直接限制 canvas 自身 */
+  .class-add-btn:hover{background:#fafbfc;border-color:#bbb}
+  
+  /* =========================================================
+     ⑤ Canvas 区 + 工具条 + 时间轴
+     ========================================================= */
+  /* Canvas 容器本身 */
+  #canvas-container{max-width:100%}
   #canvas-container canvas{
-    max-width : 100%;    /* 绝对不超过容器宽 */
-    max-height: 80vh;    /* 绝对不超过视口高 80% */
-    width : auto !important;
-    height: auto !important;
-    display: block;
+    width:100%!important;max-width:100%;max-height:80vh;display:block
   }
-
-  /* —— ★ 居中工具条 ★ —— */
+  
+  /* 工具条（fps / duration / Start to collect） */
   #annot-toolbar{
-    width: 100%;                 /* 撑满父容器 */
-    display: flex;               /* 用 flex 布局 */
-    justify-content: center;     /* 水平居中所有子元素 */
-    align-items: center;         /* 垂直居中（行内） */
-    gap: 12px;                   /* 每个控件之间留点间距 */
-    margin-top: 8px;             /* 距离进度条略微分开 */
-  }
-
-
-  /* ==== Training Panel ==== */
-  .full-btn {
-    width: 100%;
-    padding: 10px;
-    border: none;
-    border-radius: 4px;
-    background: #f2f4f7;
-    color: #555;
-    cursor: pointer;
-    font-size: 14px;
-  }
-  .full-btn:hover {
-    background: #e1e3e8;
-  }
-  .advanced summary {
-    cursor: pointer;
-    padding: 8px 0;
-    color: #888;
-    font-size: 13px;
-  }
-  .advanced summary::-webkit-details-marker {
-    display: none;
-  }
-  .advanced[open] summary::after {
-    content: "▾";
-    float: right;
-  }
-  summary::after {
-    content: "▸";
-    float: right;
-  }
-  
-  /* ==== Preview Panel ==== */
-  .help-text {
-    margin: 0;
-    color: #777;
-    font-size: 13px;
-  }
-  
-
-  .annot-bar{
-    display:flex;align-items:center;gap:12px;
-    font-size:14px;margin:4px 0;
+    width:100%;display:flex;justify-content:center;align-items:center;
+    gap:12px;margin-top:8px;font-size:14px
   }
   .annot-bar input{padding:4px 6px}
   .collect-btn{
@@ -207,40 +104,36 @@ body {
   }
   .collect-btn:hover{background:#1e4fd1}
   
-  /* 三点下拉菜单样式 */
+  /* 时间轴容器对齐居中 */
+  #timeline-container,.playRow,#canvas-container{margin:0 auto;text-align:center}
+  
+  /* =========================================================
+     ⑥ Training / Preview 中间 & 右栏细节
+     ========================================================= */
+  .full-btn{
+    width:100%;padding:10px;border:none;border-radius:4px;
+    background:#f2f4f7;color:#555;cursor:pointer;font-size:14px
+  }
+  .full-btn:hover{background:#e1e3e8}
+  
+  .help-text{margin:0;color:#777;font-size:13px}
+  
+  /* =========================================================
+     ⑦ 三点菜单
+     ========================================================= */
   .more-menu{
-    position:absolute;
-    top:  100%;           /* 正好贴在按钮下方 */
-    right:0;              /* 与右边对齐 */
-    margin-top:6px;       /* 下移一点点留缝隙 */
-  
-    min-width:160px;
-    background:#fff;
-    border:1px solid #dadce0;
-    border-radius:8px;
-    box-shadow:0 4px 10px rgba(0,0,0,.12);
-    padding:6px 0;
-    list-style:none;
-  
-    display:none;         /* 默认隐藏 */
-    z-index:1000;
+    position:absolute;top:100%;right:0;margin-top:6px;
+    min-width:160px;background:#fff;border:1px solid #dadce0;border-radius:8px;
+    box-shadow:0 4px 10px rgb(0 0 0 / .12);padding:6px 0;list-style:none;
+    display:none;z-index:1000
   }
-  
   .more-menu li{
-    padding:10px 16px;
-    font-size:14px;
-    color:#202124;
-    cursor:pointer;
-    white-space:nowrap;
+    padding:10px 16px;font-size:14px;color:#202124;cursor:pointer;white-space:nowrap
   }
+  .more-menu li:hover{background:#f1f3f4}
   
-  .more-menu li:hover{
-    background:#f1f3f4;
-  }
-    
-  #canvas-container,
-  #timeline-container,
-  .playRow {
-    margin: 0 auto;
-    text-align: center;
-  }
+  /* =========================================================
+     ⑧ 其他对齐辅助
+     ========================================================= */
+  .playRow{margin:0 auto;text-align:center}
+  

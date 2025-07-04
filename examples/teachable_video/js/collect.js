@@ -37,6 +37,11 @@ let confidence = null;
 let labeledSegments = []; // 每段形如 { lab  l: 'Class A', start: 2.0, end: 17.0 }
 let playRow;
 
+// ================= 目标外框尺寸（想多大就填多大） ================
+const CANVAS_W = 960;   // 固定外框宽
+const CANVAS_H = 540;   // 固定外框高（例如 16:9）
+
+
 
 function preload() {
   // 加载 BlazePose 模型，加载完成后调用 modelReady
@@ -78,6 +83,9 @@ function setup() {
 function handleFile(file) {  
   console.log("📦 handleFile 被调用，file.type:", file.type);
 
+  /* —— ① 上传新文件，先清空旧标注 —— */
+  resetAnnotations();          // ←★ 加这一句
+
   if (file.type?.startsWith('video')) {
     // 使用上传的视频文件创建 video 对象，加载完成后调用 videoLoaded
     const videoBlobURL = URL.createObjectURL(file); // ✅ 显式创建浏览器视频地址
@@ -94,14 +102,27 @@ function videoLoaded () {
     console.warn('video is not loaded');
     return;
   }
+  resetAnnotations();   // 二次防护：仅当视频真正加载完
 
   /* ① 先根据总时长刷新时间刻度文字 */
   updateTimelineLabels();
   console.log('video has been loaded');
 
-  /* ② 取得视频实际分辨率 → 设置 canvas */
-  vidWidth  = video.elt.videoWidth  || 640;
-  vidHeight = video.elt.videoHeight || 480;
+  // /* ② 取得视频实际分辨率 → 设置 canvas */
+  // vidWidth  = video.elt.videoWidth  || 640;
+  // vidHeight = video.elt.videoHeight || 480;
+
+  // if (!window.canvasCreated) {
+  //   const canvas = createCanvas(vidWidth, vidHeight);
+  //   canvas.parent('canvas-container');
+  //   window.canvasCreated = true;
+  // } else {
+  //   resizeCanvas(vidWidth, vidHeight);
+  // }
+
+    /* ------------ 固定画布尺寸 ------------ */
+  vidWidth  = CANVAS_W;
+  vidHeight = CANVAS_H;
 
   if (!window.canvasCreated) {
     const canvas = createCanvas(vidWidth, vidHeight);
@@ -110,6 +131,7 @@ function videoLoaded () {
   } else {
     resizeCanvas(vidWidth, vidHeight);
   }
+
 
   /* ③ 创建进度条 + 播放按钮行（会生成全局变量 videoSlider / playRow） */
   setupControlBar();
@@ -157,6 +179,10 @@ function modelReady() {
 }
 
 function setupControlBar () {
+   /* ——— 若已存在旧控件，全部干净移除 ——— */
+   if (videoSlider) { videoSlider.remove(); videoSlider = null; }
+   if (playRow)     { playRow.remove();     playRow     = null; }
+   controlBar.html('');   // 把 controlBar 里残余内容清空
   // ⬇︎ 1. 把控制条放到同一个容器里
   controlBar.parent('canvas-container');
 
@@ -397,6 +423,12 @@ function updateAnnotationTimeline() {
     return;
   }
 
+  /* ---- 提前防御：video 还没准备好 ---- */
+  if (!video || typeof video.duration !== 'function') {
+    container.innerHTML = '';   // 清空旧 DOM，避免残影
+    return;
+  }
+
   container.innerHTML = '';
 
   const duration = video.duration();
@@ -494,6 +526,12 @@ function getSegmentRow(newSeg, placedSegments = [], duration) {
   if (!placedSegments[row]) placedSegments[row] = [];
   placedSegments[row].push(newSeg);
   return row;
+}
+
+function resetAnnotations () {
+  labeledSegments = [];          // 清空数组
+  updateAnnotationTimeline();    // 立即把时间轴 UI 清零
+  showProgress('');              // 进度文字也清空
 }
 
 
