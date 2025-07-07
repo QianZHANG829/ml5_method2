@@ -41,7 +41,14 @@ let playRow;
 const CANVAS_W = 960;   // 固定外框宽
 const CANVAS_H = 540;   // 固定外框高（例如 16:9）
 
+/* --------- 刻度尺参数 --------- */
+const TICK_INTERVAL = 1;      // 每 1s 一个小刻度
+const BIG_TICK_EVERY = 5;     // 每 5s 加粗并打时间文字
+let PX_PER_SEC = 8;
+/* ----------------------------- */
 
+/* 全局变量，加在文件顶部其它全局变量旁 */
+let collectStartTime = 0;
 
 function preload() {
   // 加载 BlazePose 模型，加载完成后调用 modelReady
@@ -108,18 +115,6 @@ function videoLoaded () {
   updateTimelineLabels();
   console.log('video has been loaded');
 
-  // /* ② 取得视频实际分辨率 → 设置 canvas */
-  // vidWidth  = video.elt.videoWidth  || 640;
-  // vidHeight = video.elt.videoHeight || 480;
-
-  // if (!window.canvasCreated) {
-  //   const canvas = createCanvas(vidWidth, vidHeight);
-  //   canvas.parent('canvas-container');
-  //   window.canvasCreated = true;
-  // } else {
-  //   resizeCanvas(vidWidth, vidHeight);
-  // }
-
     /* ------------ 固定画布尺寸 ------------ */
   vidWidth  = CANVAS_W;
   vidHeight = CANVAS_H;
@@ -138,21 +133,29 @@ function videoLoaded () {
 
   /* ④ 统一宽度：以 videoSlider 的实际 clientWidth 为准 */
   setTimeout(() => {
-    const sliderDOM = videoSlider?.elt;               // p5 Slider 对应 <input>
+    const sliderDOM = videoSlider?.elt;          // p5 <input type="range">
     if (!sliderDOM) return;
 
-    const syncWidth = sliderDOM.clientWidth + 'px';
+    /* A. 用进度条宽度重新计算 PX_PER_SEC */
+    const sliderW   = sliderDOM.clientWidth;     // 像素宽
+    PX_PER_SEC      = sliderW / video.duration();
 
-    // 时间轴
-    document.getElementById('timeline-container').style.width = syncWidth;
+    /* B. 把同样宽度同步给所有相关容器 */
+    const syncW = sliderW + 'px';
 
-    // 播放按钮行
-    if (typeof playRow !== 'undefined') playRow.style('width', syncWidth);
+    /* 这两个 id 都同步一下宽度 */
+    document.getElementById('label-timeline').style.width = syncW;   // 新容器
+    const oldContainer = document.getElementById('timeline-container');
+    if (oldContainer) oldContainer.style.width = syncW;              // 若仍保留旧 id
 
-    // FPS / duration / Start to collect 工具条
+    if (typeof playRow !== 'undefined') playRow.style('width', syncW);
     const annotBar = document.getElementById('annot-toolbar');
-    if (annotBar) annotBar.style.width = syncWidth;
-  }, 0);  // 下一帧读取，确保 slider 已渲染完
+    if (annotBar) annotBar.style.width = syncW;
+
+    /* C. 更新一次时间线（刻度尺、clip、playhead 都会用新的 PX_PER_SEC） */
+    updateAnnotationTimeline();
+  }, 0); // 下一帧执行，确保 slider 已渲染完
+
 
   /* ⑤ 启动骨架检测 */
   video.loop();
@@ -161,7 +164,10 @@ function videoLoaded () {
 
   video.elt.addEventListener('timeupdate', () => {
     videoSlider.value(video.time());
+    const ph = document.getElementById('timeline-playhead');
+    if (ph) ph.style.left = `${video.time() * PX_PER_SEC}px`;   // 8 = pxPerSec
   });
+  
 
   /* ⑥ 让 canvas 点击即可切换播放/暂停 */
   const canvasEl = document.querySelector('canvas');
@@ -331,7 +337,8 @@ function gotPoses(results) {
     
     // 当录制帧数达到设定值后，结束录制并将数据添加到模型中
     if (frameCount >= CAPTURE_FRAMES) {
-      const startTime = video.time();
+      // const startTime = video.time();
+      const startTime = collectStartTime;
       const endTime = startTime + (CAPTURE_FRAMES / FPS);
 
       labeledSegments.push({
@@ -381,13 +388,14 @@ function keyPressed() {
 function startCollection(label) {
   console.log(`Will start collecting label=${label} in 1s...`);
   setTimeout(() => {
-    console.log(`Recording ${CAPTURE_FRAMES/FPS}s for label=${label}...`);
     collecting = true;
     collectingLabel = label;
     sequence = [];
     frameCount = 0;
+    collectStartTime  = video.time();     // ★ 关键：此刻就是 start
 
     showProgress(`0 / ${CAPTURE_FRAMES}`);   // ← ★ 新增
+    console.log(`Recording ${CAPTURE_FRAMES/FPS}s for label=${label}...`);
 
   }, 100);
 
@@ -415,73 +423,88 @@ function showProgress(text){
   if (el) el.textContent = text;
 }
 
-// 更新标注时间轴
-function updateAnnotationTimeline() {
+
+/* ----------------------------------------------------------
+   更新标注时间轴（剪辑软件风格，支持多行堆叠 & 刻度尺）
+   依赖：
+     - const PX_PER_SEC         // 全局像素/秒缩放因子
+     - function renderRuler()   // 负责绘制刻度尺
+     - array   labeledSegments  // [{label,start,end}, …]
+     - function getSegmentRow() // 行避让算法
+     - function getColorForLabel()
+     - video.duration() / video.time()
+----------------------------------------------------------- */
+function updateAnnotationTimeline () {
   const container = document.getElementById('label-timeline');
-  if (!container) {
-    console.warn("⚠️ label-timeline DOM 不存在，跳过可视化更新");
-    return;
-  }
+  if (!container) return;
 
-  /* ---- 提前防御：video 还没准备好 ---- */
+  /* 防御：视频尚未就绪 */
   if (!video || typeof video.duration !== 'function') {
-    container.innerHTML = '';   // 清空旧 DOM，避免残影
+    container.innerHTML = '';
     return;
   }
-
-  container.innerHTML = '';
 
   const duration = video.duration();
+  container.innerHTML = '';             // 清空旧 DOM
+  container.style.overflowX = 'auto';   // 允许横向滚动
 
-  // 初始化放置段落
-  const rowHeight = 12;
-  const placedSegments = [];
+  /* ---------- 1. 刻度尺 ---------- */
+  const ruler = document.createElement('div');
+  ruler.id = 'timeline-ruler';
+  ruler.className = 'timeline-ruler';
+  ruler.style.width = `${duration * PX_PER_SEC}px`;  // 让尺子长度随时长
+  container.appendChild(ruler);
 
-  labeledSegments.forEach((seg, index) => {
-    const div = document.createElement('div');
+  renderRuler(Math.ceil(duration));                   // 用统一函数绘制尺子
 
-    div.className = 'label-block';
-    const percentLeft = (seg.start / duration) * 100;
-    const percentWidth = ((seg.end - seg.start) / duration) * 100;
-    const row = getSegmentRow(seg, placedSegments, duration);
-    // 自动堆叠到不同的行，避免时间重叠区域覆盖
+  /* ---------- 2. 轨道条（支持多行） ---------- */
+  const track = document.createElement('div');
+  track.id = 'track-wrapper';
+  track.className = 'track-wrapper';
+  container.appendChild(track);
 
-    div.style.top = `${row * rowHeight}px`;
-    div.style.height = `${rowHeight - 2}px`;
+  const rowHeight = 14;           // 与 CSS 中 .track-wrapper 的 min-height 对齐
+  const placedRows = [];          // 行避让占位表
 
+  labeledSegments.forEach((seg, idx) => {
+    const clip = document.createElement('div');
+    clip.className = 'timeline-clip';
 
-    div.style.position = 'absolute';
-    div.style.left = `${percentLeft}%`;
-    div.style.width = `${percentWidth}%`;
-    div.style.height = '100%';
-    div.style.backgroundColor = getColorForLabel(seg.label); // 用不同颜色区分类
-    div.style.opacity = '0.7';
-    div.title = `${seg.label} (${seg.start.toFixed(1)}s - ${seg.end.toFixed(1)}s)`;
+    /* 位置 & 尺寸（像素制） */
+    clip.style.left  = `${seg.start * PX_PER_SEC}px`;
+    clip.style.width = `${(seg.end - seg.start) * PX_PER_SEC}px`;
 
-    // 添加删除按钮
-    const closeBtn = document.createElement('span');
-    closeBtn.innerHTML = '×';
-    closeBtn.style.position = 'absolute';
-    closeBtn.style.right = '2px';
-    closeBtn.style.top = '2px';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.color = '#fff';
-    closeBtn.style.fontSize = '12px';
-    closeBtn.addEventListener('click', () => {
-      labeledSegments.splice(index, 1); // 删除这段
-      updateAnnotationTimeline(); // 重绘
-    });
-    div.appendChild(closeBtn);
+    /* 行避让 */
+    const row = getSegmentRow(seg, placedRows, duration);
+    clip.style.top  = `${row * rowHeight}px`;
+    track.style.minHeight = `${(row + 1) * rowHeight}px`;
 
-    div.addEventListener('click', () => {
-      if (video && typeof video.time === 'function') {
-        video.time(seg.start);
-      }
-    });    
+    /* 外观 */
+    clip.style.background = getColorForLabel(seg.label);
+    clip.textContent = seg.label;
+    clip.title = `${seg.label}  ${seg.start.toFixed(1)}s–${seg.end.toFixed(1)}s`;
 
-    container.appendChild(div);
+    /* 交互：点击删除 / 双击跳转 */
+    /* ✦ 修改交互 ✦ */
+    clip.onclick      = () => video.time(seg.start);          // 单击 → seek
+    clip.ondblclick   = e => {                                // 双击 → 删除
+      e.stopPropagation();
+      labeledSegments.splice(idx, 1);
+      updateAnnotationTimeline();
+    };
+
+    track.appendChild(clip);
   });
+
+  /* ---------- 3. 播放指针 ---------- */
+  const playhead = document.createElement('div');
+  playhead.id = 'timeline-playhead';
+  playhead.className = 'timeline-playhead';
+  playhead.style.left = `${video.time() * PX_PER_SEC}px`;
+  track.appendChild(playhead);
 }
+
+
 
 function getColorForLabel(label) {
   const palette = {
@@ -534,6 +557,34 @@ function resetAnnotations () {
   showProgress('');              // 进度文字也清空
 }
 
+
+/* 生成刻度尺 */
+function renderRuler(totalSeconds){
+  const ruler = document.getElementById('timeline-ruler');
+  if(!ruler) return;
+  ruler.innerHTML = '';
+  const pxPerSec = PX_PER_SEC;
+
+  for(let s=0; s<=totalSeconds; s+=TICK_INTERVAL){
+    const tick = document.createElement('div');
+    tick.style.position = 'absolute';
+    tick.style.left = `${s*pxPerSec}px`;
+    tick.style.bottom = '0';
+    tick.style.width  = '1px';
+    tick.style.background = '#9ca3af';    // gray-400
+    tick.style.height = (s % BIG_TICK_EVERY === 0) ? '100%' : '50%';
+    ruler.appendChild(tick);
+
+    if(s % BIG_TICK_EVERY === 0){
+      const label = document.createElement('span');
+      label.textContent = `${s.toFixed(0)}s`;
+      label.style.position = 'absolute';
+      label.style.left = `${s*pxPerSec+2}px`;
+      label.style.bottom = '-14px';
+      ruler.appendChild(label);
+    }
+  }
+}
 
 
 // 暴露关键控制函数给外部 HTML 使用

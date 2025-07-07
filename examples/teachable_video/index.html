@@ -10,6 +10,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
   <script src="../../dist/ml5.js"></script>
 
+  <!-- material tailwind --> 
+  <script src="https://cdn.jsdelivr.net/npm/material-tailwind@latest/dist/material-tailwind.min.js"></script>
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -130,17 +133,20 @@
         </div>
 
         <!-- Timeline 区块，跟 canvas 对齐 -->
-        <div id="timeline-container" style="margin: 0 auto; width: fit-content;">
-          <!-- 🟦 时间轴组件：包含刻度 + 区块 -->
-          <div id="timeline-wrapper" style="position: relative; height: 36px; margin-top: 8px;">
-            <!-- 灰色背景轨道 -->
-            <div id="timeline-track" style="position: absolute; top: 0; height: 12px; width: 100%; background: #ddd; border-radius: 3px;"></div>
-            <!-- ✅ 标注区块容器（唯一的 label-timeline） -->
-            <div id="label-timeline" style="position: absolute; top: 0; height: 12px; width: 100%;"></div>
-            <!-- 时间刻度标签 -->
-            <div id="timeline-labels" style="position: absolute; top: -14px; font-size: 10px; color: #666; width: 100%; display: flex; justify-content: space-between;"></div>
+        <!-- Timeline 容器：可横向滚动 -->
+        <!-- ★ 新 timeline：包含刻度尺 & 轨道条 -->
+        <div id="label-timeline" class="w-full max-w-3xl overflow-x-auto select-none mt-4">
+          <!-- 刻度尺 -->
+          <div id="timeline-ruler"
+              class="relative h-6 bg-white border-b border-gray-300 flex items-end text-[10px] font-medium text-gray-500">
           </div>
+
+          <!-- 轨道条 -->
+          <div id="track-wrapper"
+              class="relative h-10 bg-gray-200 rounded-b-lg overflow-visible"></div>
         </div>
+
+        
       </div>
     </section>
   </main>
