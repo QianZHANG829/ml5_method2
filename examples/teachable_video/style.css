@@ -1,10 +1,24 @@
 /*=========================================================
  = 基础变量
 =========================================================*/
+
+/* style.css —— 文件最开头插入 */
 :root{
+  /* 4-dp 基线网格（Material Design 推荐）*/
   --header-h: 120px;       /* 真实 header 高度 */
   --grid-gap: 1rem;        /* 列/行间距 */
   --px-per-sec: 8;         /* 时间轴缩放：1s 对应 8px */
+  --space-0:  0px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;   /* 我们的行高就用它 */
+  --space-6: 24px;
+
+  /* 时间轴专用令牌 —— 只改下面这两行即可全局生效 */
+  --timeline-row-h:   var(--space-5);   /* 行高 20 px */
+  --timeline-row-gap: var(--space-1);   /* 行距 4 px  */
 }
 
 /*=========================================================
@@ -15,6 +29,8 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,sans-serif;
   background:#f0f2f5;
   color:#333;
+  padding-bottom: 3rem;   
+
 }
 html,body{height:100%}
 
@@ -35,7 +51,7 @@ main.grid{
     "classes training preview"
     "classes canvas   canvas";
   gap:var(--grid-gap);
-  height:calc(100vh - var(--header-h) - var(--grid-gap));
+  height:calc(100vh - var(--header-h) - var(--grid-gap)-3rem);
   padding:var(--grid-gap);
 }
 
@@ -49,6 +65,11 @@ main.grid{
 .training     {grid-area:training}
 .preview      {grid-area:preview}
 .canvas-preview{grid-area:canvas;text-align:center}
+/* ★ 任何位置写入 */
+.canvas-preview{
+  margin-bottom:3rem;        /* 留 48 px 呼吸 */
+}
+
 
 /*=========================================================
  ③ Card
@@ -98,12 +119,6 @@ main.grid{
   gap:1.25rem;               /* 行间距稍微大一点看得清 */
 }
 
-/* 覆盖之前的设置 */
-.annot-bar{                   /* 不再换行 */
-  flex-wrap:nowrap;
-  gap:1.25rem;               /* 行间距稍微大一点看得清 */
-}
-
 
 .annot-bar input[type=number]{
   width:72px;height:36px;padding:0 .5rem;border:1px solid #d1d5db;border-radius:6px
@@ -134,18 +149,29 @@ main.grid{
 }
 
 .track-wrapper{
-  position:relative;width:max-content;
-  background:#e5e7eb;border-radius:4px;
-  left: 0;
-  min-height:14px
+  position:relative;
+  width:max-content;
+  background:#e5e7eb;
+  border-radius:4px;
+  min-height:12px
+
 }
 
 .timeline-clip{
-  position:absolute;height:100%;border-radius:4px;font-size:10px;font-weight:600;
-  color:#fff;display:flex;align-items:center;justify-content:center;
-  box-shadow:0 1px 3px rgb(0 0 0 / .12);cursor:pointer;user-select:none;
+  position:absolute;
+  height:var(--timeline-row-h);   /* 20px */
+
+  border-radius:4px;
+  font-size:10px;font-weight:600;
+  color:#fff;
+  display:flex;align-items:center;
+  justify-content:center;
+  box-shadow:0 1px 3px rgb(0 0 0 / .12);
+  cursor:pointer;user-select:none;
   transition:opacity .15s ease
+
 }
+
 .timeline-clip:hover{opacity:.85}
 
 .timeline-playhead{
@@ -165,6 +191,18 @@ main.grid{
 .full-btn:hover{background:#e1e3e8}
 
 .help-text{margin:0;color:#777;font-size:13px}
+
+.canvas-frame{
+  max-width:960px;         /* ★ 固定 16:9 外框宽 */
+  min-width:960px;      /* 小于就触发横向滚动 */
+  margin:0 auto;
+}
+body{ overflow-x:auto; }  /* 允许页面横向滚动 */
+
+#canvas-container canvas{
+  width:100% !important;   /* 浏览器再窄才会等比缩小 */
+}
+
 
 /*=========================================================
  ⑧ 三点菜单

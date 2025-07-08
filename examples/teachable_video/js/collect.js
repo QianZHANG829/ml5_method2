@@ -50,6 +50,10 @@ let PX_PER_SEC = 8;
 /* 全局变量，加在文件顶部其它全局变量旁 */
 let collectStartTime = 0;
 
+/* sliderW 改成固定基准 960，而非 clientWidth */
+const sliderW = 960;
+
+
 function preload() {
   // 加载 BlazePose 模型，加载完成后调用 modelReady
   bodyPose = ml5.bodyPose("BlazePose", modelReady);
@@ -137,21 +141,24 @@ function videoLoaded () {
     if (!sliderDOM) return;
 
     /* A. 用进度条宽度重新计算 PX_PER_SEC */
-    const sliderW   = sliderDOM.clientWidth;     // 像素宽
-    PX_PER_SEC      = sliderW / video.duration();
+    const BASE_W = 960;                          // 永远用这条基准
+    PX_PER_SEC  = BASE_W / video.duration();     // ← A
 
     /* B. 把同样宽度同步给所有相关容器 */
-    const syncW = sliderW + 'px';
+    const syncW = BASE_W + 'px';
 
     /* 这两个 id 都同步一下宽度 */
-    document.getElementById('label-timeline').style.width = syncW;   // 新容器
+    document.getElementById('label-timeline').style.width = syncW;
     const oldContainer = document.getElementById('timeline-container');
-    if (oldContainer) oldContainer.style.width = syncW;              // 若仍保留旧 id
-
-    if (typeof playRow !== 'undefined') playRow.style('width', syncW);
     const annotBar = document.getElementById('annot-toolbar');
+
+
+    if (oldContainer) oldContainer.style.width = syncW;
+    if (typeof playRow !== 'undefined') playRow.style('width', syncW);
     if (annotBar) annotBar.style.width = syncW;
 
+    /* 让 slider 本身也 960 px */
+    videoSlider.style('width', syncW);           // ← C
     /* C. 更新一次时间线（刻度尺、clip、playhead 都会用新的 PX_PER_SEC） */
     updateAnnotationTimeline();
   }, 0); // 下一帧执行，确保 slider 已渲染完
@@ -423,6 +430,19 @@ function showProgress(text){
   if (el) el.textContent = text;
 }
 
+/* collect.js 顶部或 updateAnnotationTimeline 里加入 */
+function pxVar(name){
+  return parseFloat(
+    getComputedStyle(document.documentElement)
+    .getPropertyValue(name));
+}
+const rowHeight = pxVar('--timeline-row-h');   // 20
+const rowGap    = pxVar('--timeline-row-gap'); // 8
+
+/* 原来那行 top / minHeight 逻辑保持，只换成上面两个变量 */
+clip.style.top      = `${row * (rowHeight + rowGap)}px`;
+track.style.minHeight = `${(row + 1) * rowHeight + row * rowGap}px`;
+
 
 /* ----------------------------------------------------------
    更新标注时间轴（剪辑软件风格，支持多行堆叠 & 刻度尺）
@@ -463,7 +483,9 @@ function updateAnnotationTimeline () {
   track.className = 'track-wrapper';
   container.appendChild(track);
 
-  const rowHeight = 14;           // 与 CSS 中 .track-wrapper 的 min-height 对齐
+  /* ★ 找到这段，整段替换 */
+  const rowHeight = pxVar('--timeline-row-h');   // 20
+  const rowGap    = pxVar('--timeline-row-gap'); // 8
   const placedRows = [];          // 行避让占位表
 
   labeledSegments.forEach((seg, idx) => {
@@ -476,8 +498,8 @@ function updateAnnotationTimeline () {
 
     /* 行避让 */
     const row = getSegmentRow(seg, placedRows, duration);
-    clip.style.top  = `${row * rowHeight}px`;
-    track.style.minHeight = `${(row + 1) * rowHeight}px`;
+    clip.style.top        = `${row * (rowHeight + rowGap)}px`;
+    track.style.minHeight = `${(row + 1) * rowHeight + row * rowGap}px`;
 
     /* 外观 */
     clip.style.background = getColorForLabel(seg.label);
@@ -609,3 +631,5 @@ window.exportData = () => {
   }
   window.setFpsAndDuration = setFpsAndDuration;   // ← 一定放到全局
   
+
+ 
