@@ -53,6 +53,14 @@ let collectStartTime = 0;
 /* sliderW 改成固定基准 960，而非 clientWidth */
 const sliderW = 960;
 
+/* ====== 1. 全局变量 ====== */
+let webcamCapture = null;
+let usingWebcam   = false;
+
+/* collect.js 顶部 */
+let sampleCount   = 0;         // 总段数
+const thumbnails  = [];        // {imgEl, startF, endF, srcType}
+
 
 function preload() {
   // 加载 BlazePose 模型，加载完成后调用 modelReady
@@ -93,6 +101,7 @@ function setup() {
 
 function handleFile(file) {  
   console.log("📦 handleFile 被调用，file.type:", file.type);
+  if (bodyPose && bodyPose.isDetecting) bodyPose.detectStop();
 
   /* —— ① 上传新文件，先清空旧标注 —— */
   resetAnnotations();          // ←★ 加这一句
@@ -170,7 +179,8 @@ function videoLoaded () {
   bodyPose.detectStart(video, gotPoses);
 
   video.elt.addEventListener('timeupdate', () => {
-    videoSlider.value(video.time());
+    // videoSlider.value(video.time());
+    if(!usingWebcam) videoSlider.value(video.time());
     const ph = document.getElementById('timeline-playhead');
     if (ph) ph.style.left = `${video.time() * PX_PER_SEC}px`;   // 8 = pxPerSec
   });
@@ -185,6 +195,45 @@ function videoLoaded () {
 
   console.log('🖼️ canvas ready, pose detection started');
 }
+
+
+/* ====== 启动摄像头 ====== */
+function startWebcam() {
+  console.log("🎥 开始使用摄像头…");
+  if (bodyPose && bodyPose.isDetecting) bodyPose.detectStop();
+
+  // ① 如果之前在播本地视频，先停掉
+  if (video) {
+    try { video.stop(); video.remove(); } catch(e){}
+    video = null;
+  }
+
+  // ② 清理控制条 / 时间轴（可选）
+  document.getElementById('label-timeline')?.classList.add('hidden');
+  controlBar?.hide();
+
+  // ③ 打开摄像头
+  webcamCapture = createCapture(VIDEO, () => {
+    console.log("✅ 摄像头已就绪");
+    vidWidth  = CANVAS_W;
+    vidHeight = CANVAS_H;
+
+    if (!window.canvasCreated) {
+      const c = createCanvas(vidWidth, vidHeight);
+      c.parent('canvas-container');
+      window.canvasCreated = true;
+    } else {
+      resizeCanvas(vidWidth, vidHeight);
+    }
+
+    bodyPose.detectStart(webcamCapture, gotPoses);
+    usingWebcam = true;
+  });
+
+  // webcamCapture.size(vidWidth, vidHeight);
+  webcamCapture.hide();               // 不显示原生 video
+}
+
 
 
 function modelReady() {
@@ -239,61 +288,131 @@ function setupControlBar () {
 }
 
   
-function draw() {
-  // 填充黑色背景
-  background(0);
-  // 绘制视频图像
-  if (video) {
-    // 获取视频原始尺寸
-    let originalWidth = video.elt.videoWidth;
-    let originalHeight = video.elt.videoHeight;
-    // 计算统一的缩放因子，使视频在保持比例的前提下尽可能填满画布
-    let scaleFactor = min(vidWidth / originalWidth, vidHeight / originalHeight);
-    let scaledWidth = originalWidth * scaleFactor;
-    let scaledHeight = originalHeight * scaleFactor;
-    // 计算偏移量，将视频居中显示
-    let xOffset = (vidWidth - scaledWidth) / 2;
-    let yOffset = (vidHeight - scaledHeight) / 2;
+// function draw() {
+//   // 填充黑色背景
+//   background(0);
+//   // 绘制视频图像
+//   if (usingWebcam && webcamCapture) {
+//     // 与原来 video 的绘制逻辑完全相同，只是把数据源换成 webcamCapture
+//     const w = webcamCapture.width;
+//     const h = webcamCapture.height;
+//     const scaleFactor = min(vidWidth / w, vidHeight / h);
+//     const sw = w * scaleFactor;
+//     const sh = h * scaleFactor;
+//     const xOff = (vidWidth  - sw) / 2;
+//     const yOff = (vidHeight - sh) / 2;
+
+//     image(webcamCapture, xOff, yOff, sw, sh);
+
+//   } else if (video) {
+//     // 获取视频原始尺寸
+//     let originalWidth = video.elt.videoWidth;
+//     let originalHeight = video.elt.videoHeight;
+//     // 计算统一的缩放因子，使视频在保持比例的前提下尽可能填满画布
+//     let scaleFactor = min(vidWidth / originalWidth, vidHeight / originalHeight);
+//     let scaledWidth = originalWidth * scaleFactor;
+//     let scaledHeight = originalHeight * scaleFactor;
+//     // 计算偏移量，将视频居中显示
+//     let xOffset = (vidWidth - scaledWidth) / 2;
+//     let yOffset = (vidHeight - scaledHeight) / 2;
     
-    // 绘制视频，不进行拉伸
-    image(video, xOffset, yOffset, scaledWidth, scaledHeight);
+//     // 绘制视频，不进行拉伸
+//     image(video, xOffset, yOffset, scaledWidth, scaledHeight);
   
-    // 自动更新进度条，使其跟随视频播放
-    // if (video && videoSlider && video.time && video.duration) {
-    //   videoSlider.value(video.time());
-    // }
   
-    // 绘制检测到的关键点和骨架连线（按照相同的缩放比例与偏移量）
-    for (let i = 0; i < poses.length; i++) {
-      let pose = poses[i];
+//     // 自动更新进度条，使其跟随视频播放
+//     // if (video && videoSlider && video.time && video.duration) {
+//     //   videoSlider.value(video.time());
+//     // }
+  
+//     // 绘制检测到的关键点和骨架连线（按照相同的缩放比例与偏移量）
+//     for (let i = 0; i < poses.length; i++) {
+//       let pose = poses[i];
       
-      // 绘制骨架连线
-      for (let j = 0; j < connections.length; j++) {
-        let pointA = pose.keypoints[connections[j][0]];
-        let pointB = pose.keypoints[connections[j][1]];
-        if (pointA.confidence > 0.1 && pointB.confidence > 0.1) {
-          stroke(255, 0, 0);
-          strokeWeight(2);
-          line(pointA.x * scaleFactor + xOffset, pointA.y * scaleFactor + yOffset,
-               pointB.x * scaleFactor + xOffset, pointB.y * scaleFactor + yOffset);
-        }
-      }
+//       // 绘制骨架连线
+//       for (let j = 0; j < connections.length; j++) {
+//         let pointA = pose.keypoints[connections[j][0]];
+//         let pointB = pose.keypoints[connections[j][1]];
+//         if (pointA.confidence > 0.1 && pointB.confidence > 0.1) {
+//           stroke(255, 0, 0);
+//           strokeWeight(2);
+//           line(pointA.x * scaleFactor + xOffset, pointA.y * scaleFactor + yOffset,
+//                pointB.x * scaleFactor + xOffset, pointB.y * scaleFactor + yOffset);
+//         }
+//       }
       
-      // 绘制关键点
-      for (let j = 0; j < pose.keypoints.length; j++) {
-        let keypoint = pose.keypoints[j];
-        if (keypoint.confidence < 0.3) {
-          fill(0, 0, 255);  // 低置信度用蓝色
-          noStroke();
-          circle(keypoint.x * scaleFactor + xOffset, keypoint.y * scaleFactor + yOffset, 12);
-        } else {
-          fill(0, 255, 0);  // 高置信度用绿色
-          noStroke();
-          circle(keypoint.x * scaleFactor + xOffset, keypoint.y * scaleFactor + yOffset, 10);
-        }
-      }
+//       // 绘制关键点
+//       for (let j = 0; j < pose.keypoints.length; j++) {
+//         let keypoint = pose.keypoints[j];
+//         if (keypoint.confidence < 0.3) {
+//           fill(0, 0, 255);  // 低置信度用蓝色
+//           noStroke();
+//           circle(keypoint.x * scaleFactor + xOffset, keypoint.y * scaleFactor + yOffset, 12);
+//         } else {
+//           fill(0, 255, 0);  // 高置信度用绿色
+//           noStroke();
+//           circle(keypoint.x * scaleFactor + xOffset, keypoint.y * scaleFactor + yOffset, 10);
+//         }
+//       }
+//     }
+//   }
+// }
+
+function draw() {
+  background(0);
+
+  let scaleFactor, xOff, yOff;
+  let src = null;
+
+  if (usingWebcam && webcamCapture) {
+    const w = webcamCapture.width;
+    const h = webcamCapture.height;
+    if (w === 0 || h === 0) return;          // 摄像头还没准备好
+    scaleFactor = min(vidWidth / w, vidHeight / h);
+    src = webcamCapture;
+  } else if (video) {
+    const w = video.elt.videoWidth;
+    const h = video.elt.videoHeight;
+    scaleFactor = min(vidWidth / w, vidHeight / h);
+    src = video;
+  } else {
+    return;                                  // 没有任何源
+  }
+
+  const sw = src.width  * scaleFactor;
+  const sh = src.height * scaleFactor;
+  xOff = (vidWidth  - sw) / 2;
+  yOff = (vidHeight - sh) / 2;
+
+  image(src, xOff, yOff, sw, sh);
+
+  /* === 进度条只在文件模式更新 === */
+  if (!usingWebcam && videoSlider) {
+    videoSlider.value(video.time());
+  }
+
+  /* === 绘制骨架 & 关键点 === */
+  poses.forEach(pose => drawPose(pose, scaleFactor, xOff, yOff));
+}
+
+/* 单独封装，避免重复 */
+function drawPose(pose, s, xOff, yOff) {
+  push();
+  stroke(255,0,0); strokeWeight(2);
+  for (let c of connections) {
+    const A = pose.keypoints[c[0]];
+    const B = pose.keypoints[c[1]];
+    if (A.confidence>0.1 && B.confidence>0.1) {
+      line(A.x*s+xOff, A.y*s+yOff, B.x*s+xOff, B.y*s+yOff);
     }
   }
+  noStroke();
+  for (let kp of pose.keypoints) {
+    const col = (kp.confidence<0.3)? color(0,0,255) : color(0,255,0);
+    fill(col);
+    circle(kp.x*s+xOff, kp.y*s+yOff, kp.confidence<0.3?12:10);
+  }
+  pop();
 }
 
 
@@ -354,7 +473,8 @@ function gotPoses(results) {
         end: endTime,
       });
 
-      updateAnnotationTimeline(); // <-- 每次更新 UI
+      // updateAnnotationTimeline(); // <-- 每次更新 UI
+      if(!usingWebcam) updateAnnotationTimeline();
 
       collecting = false;
       showProgress(`✅ ${CAPTURE_FRAMES} / ${CAPTURE_FRAMES} Done!`);   // ★
@@ -363,6 +483,55 @@ function gotPoses(results) {
       classifier.addData(sequence, { label: collectingLabel });
       sequence = [];
       frameCount = 0;
+
+      ///////////////webcamera
+      /* ① 统计 & 更新文字 */
+      sampleCount++;
+      document.getElementById('sample-counter').textContent =
+            `${sampleCount} video sample${sampleCount>1?'s':''}`;
+
+      /* ② 取本段的“中间一帧”做缩略图 */
+      /* —— 对文件：video.elt.currentTime 刚好在结尾，需要 seek(); webcam 用 capture.get() ——— */
+      const thumbW = 80, thumbH = 60;   // 4:3 缩略图尺寸
+      let thumbCanvas = createGraphics(thumbW, thumbH);
+
+      if(usingWebcam && webcamCapture){
+        // 直接从当前 live 画面抓
+        thumbCanvas.image(
+          webcamCapture,
+          0,0,thumbW,thumbH,
+          0,0,webcamCapture.width,webcamCapture.height
+        );
+      } else if(video){
+        /* seek 到本段中点 → onseeked → drawImage */
+        const oldT = video.time();
+        const midT = (collectStartTime + endTime) / 2;
+        video.time(midT);
+        video.elt.onseeked = () =>{
+          thumbCanvas.image(video,0,0,thumbW,thumbH,0,0,
+                            video.width,video.height);
+          video.time(oldT);
+        };
+      }
+
+      /* ③ 转成 <img> */
+      const img = document.createElement('img');
+      img.width  = thumbW;
+      img.height = thumbH;
+      img.src = thumbCanvas.canvas.toDataURL();   // P5 内部 canvas
+      img.style.cursor='pointer';
+
+      /* ④ 点击缩略图：播放预览（文件或 webcam 回放方式不同） */
+      if(!usingWebcam && video){
+        img.onclick = ()=> video.time(collectStartTime);
+      } else {
+        img.onclick = ()=> alert('Webcam sample preview TODO');
+      }
+
+      /* ⑤ 加到 strip */
+      document.getElementById('thumb-strip').appendChild(img);
+      thumbnails.push(img);
+
     }
   }
 }
@@ -399,7 +568,8 @@ function startCollection(label) {
     collectingLabel = label;
     sequence = [];
     frameCount = 0;
-    collectStartTime  = video.time();     // ★ 关键：此刻就是 start
+    // collectStartTime  = video.time();     // ★ 关键：此刻就是 start
+    collectStartTime  = usingWebcam ? (millis()/1000) : video.time();
 
     showProgress(`0 / ${CAPTURE_FRAMES}`);   // ← ★ 新增
     console.log(`Recording ${CAPTURE_FRAMES/FPS}s for label=${label}...`);
@@ -440,8 +610,8 @@ const rowHeight = pxVar('--timeline-row-h');   // 20
 const rowGap    = pxVar('--timeline-row-gap'); // 8
 
 /* 原来那行 top / minHeight 逻辑保持，只换成上面两个变量 */
-clip.style.top      = `${row * (rowHeight + rowGap)}px`;
-track.style.minHeight = `${(row + 1) * rowHeight + row * rowGap}px`;
+// clip.style.top      = `${row * (rowHeight + rowGap)}px`;
+// track.style.minHeight = `${(row + 1) * rowHeight + row * rowGap}px`;
 
 
 /* ----------------------------------------------------------
@@ -512,7 +682,9 @@ function updateAnnotationTimeline () {
     clip.ondblclick   = e => {                                // 双击 → 删除
       e.stopPropagation();
       labeledSegments.splice(idx, 1);
-      updateAnnotationTimeline();
+      // updateAnnotationTimeline();
+      if (!usingWebcam) updateAnnotationTimeline();
+
     };
 
     track.appendChild(clip);
@@ -630,6 +802,8 @@ window.exportData = () => {
     console.log(`⚙️ FPS=${FPS}, CAPTURE_FRAMES=${CAPTURE_FRAMES}`);
   }
   window.setFpsAndDuration = setFpsAndDuration;   // ← 一定放到全局
+  /* ====== 4. 暴露到全局，给 HTML 调用 ====== */
+window.startWebcam = startWebcam;
   
 
  

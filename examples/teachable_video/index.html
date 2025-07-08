@@ -114,6 +114,7 @@
 
         <div id="canvas-container" class="card" 
               style="margin: 2rem auto; text-align: center;"></div>
+        
 
         <!-- 🔹① 新加：标注工具条 -->
         <div id="annot-toolbar" class="annot-bar" >
@@ -130,6 +131,17 @@
           <!-- ★ 新增：进度文字容器 -->
           <span id="collect-progress"
           style="margin-left:12px;font-size:14px;color:#555;"></span>
+
+           <!-- ① 统计文字 -->
+          <span id="sample-counter" style="margin-left:16px;font-weight:500;">
+            0 video samples
+          </span>
+
+          <!-- ② 缩略图列表 -->
+          <div id="thumb-strip"
+          style="display:flex;gap:8px;margin-top:8px;overflow-x:auto;"></div>
+
+
         </div>
 
         <!-- Timeline 区块，跟 canvas 对齐 -->
@@ -259,12 +271,9 @@
   </script>
 
   <script>
-   
 
     /* ① 对已有的 Class 1 调用一次 */
     bindMenu(document.querySelector('.class-card'));
-
-
 
     /* 计数器：Class 1 已经存在，从 2 开始 */
     let classCount = 1;
@@ -312,6 +321,20 @@
       document.querySelector('.classes-panel')
               .insertBefore(cardEl, document.querySelector('.class-add-btn'));
     });
+
+    /* 绑定所有 Webcam 按钮 */
+    document.querySelectorAll('.webcam-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        console.log('👆 webcam btn clicked');
+        // 激活当前卡片名称 → 收集时能打正确 label
+        className = btn.closest('.class-card')
+                      .querySelector('.card-header span').textContent;
+        document.getElementById('class-name').textContent = className;
+
+        startWebcam();
+      });
+    });
+
   </script>
     
 </body>
