@@ -515,20 +515,43 @@ function gotPoses(results) {
       }
 
       /* ③ 转成 <img> */
+      /* ③ 创建 <img> 缩略图 */
+      /* ③ 创建 <img> 缩略图 */
       const img = document.createElement('img');
       img.width  = thumbW;
       img.height = thumbH;
-      img.src = thumbCanvas.canvas.toDataURL();   // P5 内部 canvas
-      img.style.cursor='pointer';
+      img.src    = thumbCanvas.canvas.toDataURL();
+      img.style.cursor = 'pointer';
 
-      /* ④ 点击缩略图：播放预览（文件或 webcam 回放方式不同） */
-      if(!usingWebcam && video){
-        img.onclick = ()=> video.time(collectStartTime);
-      } else {
-        img.onclick = ()=> alert('Webcam sample preview TODO');
-      }
+      /* 挂上开始时间，文件模式预览用 */
+      img._startTimeSec = collectStartTime;
 
-      /* ⑤ 加到 strip */
+      /* 一个定时器句柄，用来“单击延迟” */
+      let clickTimer = null;
+
+      /* ④ 单击：先开启延迟，200 ms 后再决定是否执行 */
+      img.addEventListener('click', e => {
+        if (clickTimer) return;             // 已经在等待 ⇒ 忽略
+        clickTimer = setTimeout(() => {
+          clickTimer = null;                // 清掉句柄
+          /* ← 真正的单击逻辑 */
+          if (usingWebcam) {
+            alert('Webcam sample preview TODO');
+          } else {
+            video.time(img._startTimeSec);
+          }
+        }, 200);                            // 200 ms 内若触发 dblclick 会取消
+      });
+
+      /* ⑤ 双击：先取消等待中的单击，再删除缩略图 */
+      img.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        clearTimeout(clickTimer);           // 阻止单击回调
+        clickTimer = null;
+        removeThumbnail(img);               // DOM + 计数同步
+      });
+
+      /* ⑥ 加到 strip 并记到数组 */
       document.getElementById('thumb-strip').appendChild(img);
       thumbnails.push(img);
 
@@ -681,9 +704,11 @@ function updateAnnotationTimeline () {
     clip.onclick      = () => video.time(seg.start);          // 单击 → seek
     clip.ondblclick   = e => {                                // 双击 → 删除
       e.stopPropagation();
-      labeledSegments.splice(idx, 1);
-      // updateAnnotationTimeline();
-      if (!usingWebcam) updateAnnotationTimeline();
+      labeledSegments.splice(idx,1);
+      updateAnnotationTimeline();
+
+      /* 若存在对应缩略图，也一并删除 */
+      if (idx < thumbnails.length) removeThumbnail(thumbnails[idx]);
 
     };
 
@@ -778,6 +803,16 @@ function renderRuler(totalSeconds){
       ruler.appendChild(label);
     }
   }
+}
+
+function removeThumbnail(img){
+  if(!img) return;
+  img.remove();                               // 1) DOM
+  const idx = thumbnails.indexOf(img);
+  if(idx !== -1) thumbnails.splice(idx,1);    // 2) 从数组里删
+  sampleCount = Math.max(0, sampleCount-1);   // 3) 计数 & 文本
+  document.getElementById('sample-counter').textContent =
+        `${sampleCount} video sample${sampleCount!==1?'s':''}`;
 }
 
 
