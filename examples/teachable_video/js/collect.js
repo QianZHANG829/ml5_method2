@@ -61,6 +61,7 @@ let usingWebcam   = false;
 let sampleCount   = 0;         // 总段数
 const thumbnails  = [];        // {imgEl, startF, endF, srcType}
 
+let videoTimeHandler = null;
 
 function preload() {
   // 加载 BlazePose 模型，加载完成后调用 modelReady
@@ -99,23 +100,43 @@ function setup() {
   console.log("Setup done. Press A/B to record, S to save.");
 }
 
-function handleFile(file) {  
-  console.log("📦 handleFile 被调用，file.type:", file.type);
+/** 处理上传文件（视频） */
+function handleFile(file) {
+  /* ============ 如果此时正在使用摄像头，先干净关闭 ============ */
+  if (usingWebcam && webcamCapture) {
+    try {
+      webcamCapture.stop();        // 1. 停止 p5 捕获
+      webcamCapture.remove();      // 2. 移除隐藏的 <video>
+    } catch (e) {
+      console.warn('close webcam error', e);
+    }
+    usingWebcam   = false;         // 3. 状态复原
+    webcamCapture = null;
+
+    /* 4. 恢复时间轴 & 控制条可见 */
+    document.getElementById('label-timeline')?.classList.remove('hidden');
+    controlBar?.show();            // p5 DOM：createDiv().show()
+  }
+
+  console.log("📦 handleFile 被调用，file.type:", file?.type);
+
+  /* 若 BlazePose 正在 Webcam 流上检测，先停掉 */
   if (bodyPose && bodyPose.isDetecting) bodyPose.detectStop();
 
-  /* —— ① 上传新文件，先清空旧标注 —— */
-  resetAnnotations();          // ←★ 加这一句
+  /* —— 上传新文件前，清空旧标注 —— */
+  resetAnnotations();
 
+  /* 只接受视频文件 */
   if (file.type?.startsWith('video')) {
-    // 使用上传的视频文件创建 video 对象，加载完成后调用 videoLoaded
-    const videoBlobURL = URL.createObjectURL(file); // ✅ 显式创建浏览器视频地址
+    // 显式创建浏览器本地 URL
+    const videoBlobURL = URL.createObjectURL(file);
     video = createVideo([videoBlobURL], videoLoaded);
-    video.hide(); // 隐藏默认的视频 DOM 元素
+    video.hide();                   // 隐藏原生 <video>
   } else {
-    // console.log("请上传视频文件");
     console.warn("❌ 文件类型不合法，请上传视频文件");
   }
 }
+
 
 function videoLoaded () {
   if (!video) {
@@ -179,6 +200,8 @@ function videoLoaded () {
   bodyPose.detectStart(video, gotPoses);
 
   video.elt.addEventListener('timeupdate', () => {
+    if (!video || !video.elt) return;   // ← 防守式检查（★新增）
+
     // videoSlider.value(video.time());
     if(!usingWebcam) videoSlider.value(video.time());
     const ph = document.getElementById('timeline-playhead');
@@ -194,6 +217,16 @@ function videoLoaded () {
   }
 
   console.log('🖼️ canvas ready, pose detection started');
+  
+  videoTimeHandler = () => {
+    if (!usingWebcam || !video) return;
+    videoSlider.value(video.time());
+
+    const ph = document.getElementById('timeline-playhead');
+    if (ph) ph.style.left = `${video.time() * PX_PER_SEC}px`;
+  };
+  video.elt.addEventListener('timeupdate', videoTimeHandler);
+
 }
 
 
@@ -232,6 +265,14 @@ function startWebcam() {
 
   // webcamCapture.size(vidWidth, vidHeight);
   webcamCapture.hide();               // 不显示原生 video
+
+  if (video && video.elt && videoTimeHandler) {
+    video.elt.removeEventListener('timeupdate', videoTimeHandler);
+    videoTimeHandler = null;
+  }
+  try { video.stop(); video.remove(); } catch(e) {}
+  video = null;
+
 }
 
 
@@ -479,6 +520,10 @@ function gotPoses(results) {
       collecting = false;
       showProgress(`✅ ${CAPTURE_FRAMES} / ${CAPTURE_FRAMES} Done!`);   // ★
 
+      // 确保文件模式下视频仍在播放
+      if (!usingWebcam && video && video.elt.paused) {
+        video.play();
+      }
 
       classifier.addData(sequence, { label: collectingLabel });
       sequence = [];
@@ -503,15 +548,28 @@ function gotPoses(results) {
           0,0,webcamCapture.width,webcamCapture.height
         );
       } else if(video){
-        /* seek 到本段中点 → onseeked → drawImage */
         const oldT = video.time();
-        const midT = (collectStartTime + endTime) / 2;
-        video.time(midT);
-        video.elt.onseeked = () =>{
-          thumbCanvas.image(video,0,0,thumbW,thumbH,0,0,
-                            video.width,video.height);
-          video.time(oldT);
-        };
+  const midT = (collectStartTime + endTime) / 2;
+
+  /* 第一次 seek：跳到中点抓缩略图 */
+  video.time(midT);
+
+  video.elt.onseeked = () => {
+    /* 1. 抓缩略图 */
+    thumbCanvas.image(
+      video, 0, 0, thumbW, thumbH,
+      0, 0, video.width, video.height
+    );
+    /* 2. 取消回调，防止递归触发 */
+    video.elt.onseeked = null;
+    /* 3. 再 seek 回原来的播放位置 */
+    video.time(oldT);
+    /* 4. 等最后一次 seek 真正完成，再恢复播放 */
+    setTimeout(() => {
+      if (video.elt.paused) video.play();
+    }, 80);          // 80ms 足够让浏览器触发第二次 onseeked
+  };
+
       }
 
       /* ③ 转成 <img> */
@@ -647,81 +705,81 @@ const rowGap    = pxVar('--timeline-row-gap'); // 8
      - function getColorForLabel()
      - video.duration() / video.time()
 ----------------------------------------------------------- */
-function updateAnnotationTimeline () {
-  const container = document.getElementById('label-timeline');
-  if (!container) return;
+// function updateAnnotationTimeline () {
+//   const container = document.getElementById('label-timeline');
+//   if (!container) return;
 
-  /* 防御：视频尚未就绪 */
-  if (!video || typeof video.duration !== 'function') {
-    container.innerHTML = '';
-    return;
-  }
+//   /* 防御：视频尚未就绪 */
+//   if (!video || typeof video.duration !== 'function') {
+//     container.innerHTML = '';
+//     return;
+//   }
 
-  const duration = video.duration();
-  container.innerHTML = '';             // 清空旧 DOM
-  container.style.overflowX = 'auto';   // 允许横向滚动
+//   const duration = video.duration();
+//   container.innerHTML = '';             // 清空旧 DOM
+//   container.style.overflowX = 'auto';   // 允许横向滚动
 
-  /* ---------- 1. 刻度尺 ---------- */
-  const ruler = document.createElement('div');
-  ruler.id = 'timeline-ruler';
-  ruler.className = 'timeline-ruler';
-  ruler.style.width = `${duration * PX_PER_SEC}px`;  // 让尺子长度随时长
-  container.appendChild(ruler);
+//   /* ---------- 1. 刻度尺 ---------- */
+//   const ruler = document.createElement('div');
+//   ruler.id = 'timeline-ruler';
+//   ruler.className = 'timeline-ruler';
+//   ruler.style.width = `${duration * PX_PER_SEC}px`;  // 让尺子长度随时长
+//   container.appendChild(ruler);
 
-  renderRuler(Math.ceil(duration));                   // 用统一函数绘制尺子
+//   renderRuler(Math.ceil(duration));                   // 用统一函数绘制尺子
 
-  /* ---------- 2. 轨道条（支持多行） ---------- */
-  const track = document.createElement('div');
-  track.id = 'track-wrapper';
-  track.className = 'track-wrapper';
-  container.appendChild(track);
+//   /* ---------- 2. 轨道条（支持多行） ---------- */
+//   const track = document.createElement('div');
+//   track.id = 'track-wrapper';
+//   track.className = 'track-wrapper';
+//   container.appendChild(track);
 
-  /* ★ 找到这段，整段替换 */
-  const rowHeight = pxVar('--timeline-row-h');   // 20
-  const rowGap    = pxVar('--timeline-row-gap'); // 8
-  const placedRows = [];          // 行避让占位表
+//   /* ★ 找到这段，整段替换 */
+//   const rowHeight = pxVar('--timeline-row-h');   // 20
+//   const rowGap    = pxVar('--timeline-row-gap'); // 8
+//   const placedRows = [];          // 行避让占位表
 
-  labeledSegments.forEach((seg, idx) => {
-    const clip = document.createElement('div');
-    clip.className = 'timeline-clip';
+//   labeledSegments.forEach((seg, idx) => {
+//     const clip = document.createElement('div');
+//     clip.className = 'timeline-clip';
 
-    /* 位置 & 尺寸（像素制） */
-    clip.style.left  = `${seg.start * PX_PER_SEC}px`;
-    clip.style.width = `${(seg.end - seg.start) * PX_PER_SEC}px`;
+//     /* 位置 & 尺寸（像素制） */
+//     clip.style.left  = `${seg.start * PX_PER_SEC}px`;
+//     clip.style.width = `${(seg.end - seg.start) * PX_PER_SEC}px`;
 
-    /* 行避让 */
-    const row = getSegmentRow(seg, placedRows, duration);
-    clip.style.top        = `${row * (rowHeight + rowGap)}px`;
-    track.style.minHeight = `${(row + 1) * rowHeight + row * rowGap}px`;
+//     /* 行避让 */
+//     const row = getSegmentRow(seg, placedRows, duration);
+//     clip.style.top        = `${row * (rowHeight + rowGap)}px`;
+//     track.style.minHeight = `${(row + 1) * rowHeight + row * rowGap}px`;
 
-    /* 外观 */
-    clip.style.background = getColorForLabel(seg.label);
-    clip.textContent = seg.label;
-    clip.title = `${seg.label}  ${seg.start.toFixed(1)}s–${seg.end.toFixed(1)}s`;
+//     /* 外观 */
+//     clip.style.background = getColorForLabel(seg.label);
+//     clip.textContent = seg.label;
+//     clip.title = `${seg.label}  ${seg.start.toFixed(1)}s–${seg.end.toFixed(1)}s`;
 
-    /* 交互：点击删除 / 双击跳转 */
-    /* ✦ 修改交互 ✦ */
-    clip.onclick      = () => video.time(seg.start);          // 单击 → seek
-    clip.ondblclick   = e => {                                // 双击 → 删除
-      e.stopPropagation();
-      labeledSegments.splice(idx,1);
-      updateAnnotationTimeline();
+//     /* 交互：点击删除 / 双击跳转 */
+//     /* ✦ 修改交互 ✦ */
+//     clip.onclick      = () => video.time(seg.start);          // 单击 → seek
+//     clip.ondblclick   = e => {                                // 双击 → 删除
+//       e.stopPropagation();
+//       labeledSegments.splice(idx,1);
+//       updateAnnotationTimeline();
 
-      /* 若存在对应缩略图，也一并删除 */
-      if (idx < thumbnails.length) removeThumbnail(thumbnails[idx]);
+//       /* 若存在对应缩略图，也一并删除 */
+//       if (idx < thumbnails.length) removeThumbnail(thumbnails[idx]);
 
-    };
+//     };
 
-    track.appendChild(clip);
-  });
+//     track.appendChild(clip);
+//   });
 
-  /* ---------- 3. 播放指针 ---------- */
-  const playhead = document.createElement('div');
-  playhead.id = 'timeline-playhead';
-  playhead.className = 'timeline-playhead';
-  playhead.style.left = `${video.time() * PX_PER_SEC}px`;
-  track.appendChild(playhead);
-}
+//   /* ---------- 3. 播放指针 ---------- */
+//   const playhead = document.createElement('div');
+//   playhead.id = 'timeline-playhead';
+//   playhead.className = 'timeline-playhead';
+//   playhead.style.left = `${video.time() * PX_PER_SEC}px`;
+//   track.appendChild(playhead);
+// }
 
 
 
@@ -754,21 +812,21 @@ function updateTimelineLabels() {
   }
 }
 
-function getSegmentRow(newSeg, placedSegments = [], duration) {
-  let row = 0;
-  while (true) {
-    const overlap = placedSegments[row]?.some(existing => {
-      return !(newSeg.end <= existing.start || newSeg.start >= existing.end);
-    });
+// function getSegmentRow(newSeg, placedSegments = [], duration) {
+//   let row = 0;
+//   while (true) {
+//     const overlap = placedSegments[row]?.some(existing => {
+//       return !(newSeg.end <= existing.start || newSeg.start >= existing.end);
+//     });
 
-    if (!overlap) break;
-    row++;
-  }
+//     if (!overlap) break;
+//     row++;
+//   }
 
-  if (!placedSegments[row]) placedSegments[row] = [];
-  placedSegments[row].push(newSeg);
-  return row;
-}
+//   if (!placedSegments[row]) placedSegments[row] = [];
+//   placedSegments[row].push(newSeg);
+//   return row;
+// }
 
 function resetAnnotations () {
   labeledSegments = [];          // 清空数组
@@ -778,32 +836,32 @@ function resetAnnotations () {
 
 
 /* 生成刻度尺 */
-function renderRuler(totalSeconds){
-  const ruler = document.getElementById('timeline-ruler');
-  if(!ruler) return;
-  ruler.innerHTML = '';
-  const pxPerSec = PX_PER_SEC;
+// function renderRuler(totalSeconds){
+//   const ruler = document.getElementById('timeline-ruler');
+//   if(!ruler) return;
+//   ruler.innerHTML = '';
+//   const pxPerSec = PX_PER_SEC;
 
-  for(let s=0; s<=totalSeconds; s+=TICK_INTERVAL){
-    const tick = document.createElement('div');
-    tick.style.position = 'absolute';
-    tick.style.left = `${s*pxPerSec}px`;
-    tick.style.bottom = '0';
-    tick.style.width  = '1px';
-    tick.style.background = '#9ca3af';    // gray-400
-    tick.style.height = (s % BIG_TICK_EVERY === 0) ? '100%' : '50%';
-    ruler.appendChild(tick);
+//   for(let s=0; s<=totalSeconds; s+=TICK_INTERVAL){
+//     const tick = document.createElement('div');
+//     tick.style.position = 'absolute';
+//     tick.style.left = `${s*pxPerSec}px`;
+//     tick.style.bottom = '0';
+//     tick.style.width  = '1px';
+//     tick.style.background = '#9ca3af';    // gray-400
+//     tick.style.height = (s % BIG_TICK_EVERY === 0) ? '100%' : '50%';
+//     ruler.appendChild(tick);
 
-    if(s % BIG_TICK_EVERY === 0){
-      const label = document.createElement('span');
-      label.textContent = `${s.toFixed(0)}s`;
-      label.style.position = 'absolute';
-      label.style.left = `${s*pxPerSec+2}px`;
-      label.style.bottom = '-14px';
-      ruler.appendChild(label);
-    }
-  }
-}
+//     if(s % BIG_TICK_EVERY === 0){
+//       const label = document.createElement('span');
+//       label.textContent = `${s.toFixed(0)}s`;
+//       label.style.position = 'absolute';
+//       label.style.left = `${s*pxPerSec+2}px`;
+//       label.style.bottom = '-14px';
+//       ruler.appendChild(label);
+//     }
+//   }
+// }
 
 function removeThumbnail(img){
   if(!img) return;

@@ -164,8 +164,11 @@
   </main>
 
   <!-- 你已有的 JS 代码，保持不动 -->
-  <script src="js/collect.js"></script>
-  <script type="module" src="src/main.js"></script>
+  <script type="module" src="./src/main.js"></script>
+  <script type="module" src="src/timeline.js"></script>
+  <script src="js/collect.js" defer></script>
+
+
   <!-- <script src="js/labeler.js"></script> -->
 
   <script>
@@ -337,6 +340,24 @@
     });
 
   </script>
+  <!-- index.html 末尾，任何脚本之后加这一段（或放到你已有的 <script> 里） -->
+  <script>
+  /* 统一监听 Classes 列 */
+  document.querySelector('.classes-panel')
+    .addEventListener('click', e => {
+      const btn = e.target.closest('.webcam-btn');
+      if (!btn) return;                      // 点的不是 webcam 按钮 → 无视
+
+      /* 1️⃣ 更新当前类名 —— 取按钮所在卡片的标题 */
+      const card = btn.closest('.class-card');
+      className  = card.querySelector('.card-header span').textContent;
+      document.getElementById('class-name').textContent = className;
+
+      /* 2️⃣ 启动摄像头（collect.js 里已有逻辑） */
+      startWebcam();
+    });
+  </script>
+
     
 </body>
 </html>
