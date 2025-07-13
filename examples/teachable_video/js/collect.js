@@ -899,4 +899,52 @@ window.exportData = () => {
 window.startWebcam = startWebcam;
   
 
- 
+ /* =====================================================================
+   统一事件委托：确保任何 Class 卡片（包括动态新增）里的
+   ▶ Webcam  ◀ Upload  都能把数据标到正确的 className
+===================================================================== */
+
+/* ---- ① 辅助函数：设置当前激活类 ---- */
+function setActiveClass(cardEl) {
+  if (!cardEl) return;
+
+  // 更新全局标签
+  className = cardEl.querySelector('.card-header span').textContent;
+  document.getElementById('class-name').textContent = className;
+
+  // 可选：给当前卡片加蓝色描边，提示正在采集
+  document.querySelectorAll('.class-card')
+          .forEach(c => c.classList.remove('ring-2', 'ring-blue-500'));
+  cardEl.classList.add('ring-2', 'ring-blue-500');
+}
+
+/* ---- ② 处理 click：Webcam / Upload 按钮 ---- */
+document.querySelector('.classes-panel')
+  .addEventListener('click', e => {
+    const camBtn = e.target.closest('.webcam-btn');
+    if (camBtn) {
+      const card = camBtn.closest('.class-card');
+      setActiveClass(card);
+      startWebcam();
+      return;
+    }
+
+    const upBtn = e.target.closest('.upload-btn');
+    if (upBtn) {
+      const card = upBtn.closest('.class-card');
+      /* 触发隐藏的 <input type=file> */
+      card.querySelector('input[type=file]').click();
+    }
+  });
+
+/* ---- ③ 处理 change：真正拿到上传文件 ---- */
+document.querySelector('.classes-panel')
+  .addEventListener('change', e => {
+    if (e.target.type !== 'file') return;      // 不是 file input
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const card = e.target.closest('.class-card');
+    setActiveClass(card);
+    handleFile(file);                          // 原有上传逻辑
+  });

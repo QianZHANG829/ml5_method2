@@ -326,37 +326,11 @@
               .insertBefore(cardEl, document.querySelector('.class-add-btn'));
     });
 
-    /* 绑定所有 Webcam 按钮 */
-    document.querySelectorAll('.webcam-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        console.log('👆 webcam btn clicked');
-        // 激活当前卡片名称 → 收集时能打正确 label
-        className = btn.closest('.class-card')
-                      .querySelector('.card-header span').textContent;
-        document.getElementById('class-name').textContent = className;
 
-        startWebcam();
-      });
-    });
 
   </script>
   <!-- index.html 末尾，任何脚本之后加这一段（或放到你已有的 <script> 里） -->
-  <script>
-  /* 统一监听 Classes 列 */
-  document.querySelector('.classes-panel')
-    .addEventListener('click', e => {
-      const btn = e.target.closest('.webcam-btn');
-      if (!btn) return;                      // 点的不是 webcam 按钮 → 无视
-
-      /* 1️⃣ 更新当前类名 —— 取按钮所在卡片的标题 */
-      const card = btn.closest('.class-card');
-      className  = card.querySelector('.card-header span').textContent;
-      document.getElementById('class-name').textContent = className;
-
-      /* 2️⃣ 启动摄像头（collect.js 里已有逻辑） */
-      startWebcam();
-    });
-  </script>
+  
 
     
 </body>
