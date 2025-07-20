@@ -948,3 +948,53 @@ document.querySelector('.classes-panel')
     setActiveClass(card);
     handleFile(file);                          // 原有上传逻辑
   });
+
+
+//训练按钮
+
+let isTraining = false;   // ⭐ 新增：全局锁
+
+document.getElementById('train-btn')
+  .addEventListener('click', () => {
+    /* 已在训练 → 直接返回 */
+    if (isTraining) {
+      console.warn('Training is already running…');
+      return;
+    }
+
+    /* 数据&标签检查（至少两类） */
+    // const labels = classifier.getData('ys').map(d => d.label);
+    const labels = (typeof classifier.getData === 'function')
+              ? classifier.getData().map(d => d.ys.label)   // 老版本
+              : (classifier.data || []).map(d => d.ys.label); // 新版本
+
+
+    if ([...new Set(labels)].length < 2) {
+      alert('请先采集至少两个不同的标签再训练！');
+      return;
+    }
+
+    /* 读取输入框 */
+    const lr     = parseFloat(document.getElementById('lr-input').value)   || 0.001;
+    const epochs = parseInt( document.getElementById('epochs-input').value) || 5;
+
+    /* 锁定状态 & 按钮禁用 */
+    isTraining = true;
+    const btn  = document.getElementById('train-btn');
+    btn.disabled = true;
+    btn.textContent = 'Training…';
+
+    /* 设置学习率并训练 */
+    classifier.learningRate = lr;
+    classifier.normalizeData();
+    classifier.train({ epochs }, () => {
+      /* 训练完成回调 */
+      console.log('模型训练完成！');
+      classifier.save();
+
+      isTraining = false;
+      btn.disabled = false;
+      btn.textContent = 'Train Model';
+    });
+  });
+

@@ -6,11 +6,17 @@
   <title>Teachable Video</title>
 
   <!-- p5.js + Tone.js + ml5.js -->
+
+  <!-- p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-  <script src="../../dist/ml5.js"></script>
 
-  <!-- material tailwind --> 
+  <!-- 引用本地编译好的 ml5.js (development build) -->
+  <script src="../../dist/ml5.js"></script>
+  
+
+
+  <!-- material tailwind -->
   <script src="https://cdn.jsdelivr.net/npm/material-tailwind@latest/dist/material-tailwind.min.js"></script>
 
   <link rel="stylesheet" href="style.css" />
@@ -90,11 +96,23 @@
     <section class="column training">
       <div class="card">
         <div class="card-header"><span>Training</span></div>
-        <div class="card-body">
-          <button class="full-btn" id="train-btn">Train Model</button>
+        <div class="card-body flex flex-col gap-2">
+          <div class="flex items-center gap-2">
+            <label class="text-sm w-24">learningRate</label>
+            <input id="lr-input"   type="number" step="0.0001" value="0.001"
+                  class="border rounded px-2 py-1 w-28 text-right" />
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-sm w-24">epochs</label>
+            <input id="epochs-input" type="number" min="1" value="5"
+                  class="border rounded px-2 py-1 w-28 text-right" />
+          </div>
+
+          <button class="full-btn mt-2" id="train-btn">Train Model</button>
         </div>
       </div>
     </section>
+
 
     <!-- RIGHT COLUMN: Preview -->
     <section class="column preview">
@@ -218,14 +236,8 @@
         }
       });
 
-    // 训练按钮
-    document.getElementById('train-btn')
-      .addEventListener('click', () => {
-        if (typeof classifier !== 'undefined') {
-          classifier.normalizeData();
-          classifier.train({ epochs: 5 }, finishedTraining);
-        }
-      });
+    
+
 
     // 导出数据
     document.getElementById('export-model-btn')
