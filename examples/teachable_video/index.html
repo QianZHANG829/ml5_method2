@@ -55,6 +55,11 @@
 
               <button class="sample-btn upload-btn">⬆️<br><span>Upload</span></button>
             </div>
+            <!-- 每个卡片自己的样本计数 -->
+             <div
+                class="class-sample-count text-sm mt-1 text-gray-600"
+                data-sample-count="0"
+              >0 video samples</div>
           </div>
         </div>
       </template>
@@ -81,7 +86,13 @@
             <button class="sample-btn upload-btn" onclick="document.getElementById('video-upload-1').click()">
               ⬆️<br><span>Upload</span>
             </button>
-          </div>
+              </div>
+                <!-- 每个卡片自己的样本计数 -->
+                <div
+                    class="class-sample-count text-sm mt-1 text-gray-600"
+                    data-sample-count="0"
+                  >0 video samples</div>
+               </div>
         </div>
       </div>
 
@@ -228,13 +239,13 @@
   <!-- 新增绑定逻辑：上传视频并展示 -->
   <script>
     // 上传视频 → 调用 sketch.js 中的 handleFile(file)
-    document.getElementById('video-upload-1')
-      .addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (file) {
-          handleFile(file);
-        }
-      });
+    // document.getElementById('video-upload-1')
+    //   .addEventListener('change', e => {
+    //     const file = e.target.files[0];
+    //     if (file) {
+    //       handleFile(file);
+    //     }
+    //   });
 
     
 

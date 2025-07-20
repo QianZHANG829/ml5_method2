@@ -531,9 +531,28 @@ function gotPoses(results) {
 
       ///////////////webcamera
       /* ① 统计 & 更新文字 */
-      sampleCount++;
+      // sampleCount++;
+      // document.getElementById('sample-counter').textContent =
+      //       `${sampleCount} video sample${sampleCount>1?'s':''}`;
+
+  
+      // ① 找到当前激活卡片
+      const activeCard = document.querySelector('.class-card.ring-blue-500');
+      let cardCount = 0;
+      if (activeCard) {
+        // ② 拿到卡片上的计数元素
+        const countEl = activeCard.querySelector('.class-sample-count');
+        // ③ 从 data 属性里读取旧值 +1
+        cardCount = parseInt(countEl.getAttribute('data-sample-count') || '0', 10) + 1;
+        // ④ 写回 data 属性 & 文本
+        countEl.setAttribute('data-sample-count', String(cardCount));
+        countEl.textContent = `${cardCount} video samples`;
+      }
+
+      // ⑤ 再更新底部的 toolbar 计数为当前类的值
       document.getElementById('sample-counter').textContent =
-            `${sampleCount} video sample${sampleCount>1?'s':''}`;
+            `${cardCount} video sample${cardCount>1?'s':''}`;
+
 
       /* ② 取本段的“中间一帧”做缩略图 */
       /* —— 对文件：video.elt.currentTime 刚好在结尾，需要 seek(); webcam 用 capture.get() ——— */
