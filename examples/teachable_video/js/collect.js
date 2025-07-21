@@ -119,6 +119,9 @@ function handleFile(file) {
   }
 
   console.log("📦 handleFile 被调用，file.type:", file?.type);
+  // —— 新增：打印当前全局 collectingLabel，确保它是刚才从卡片里读到的那个 label
+  console.log('🗂 handleFile called, label =', collectingLabel);
+  document.getElementById('class-name').textContent = collectingLabel;
 
   /* 若 BlazePose 正在 Webcam 流上检测，先停掉 */
   if (bodyPose && bodyPose.isDetecting) bodyPose.detectStop();
@@ -537,21 +540,20 @@ function gotPoses(results) {
 
   
       // ① 找到当前激活卡片
+      // —— 更新当前激活卡片下的计数 —— 
       const activeCard = document.querySelector('.class-card.ring-blue-500');
-      let cardCount = 0;
+      let nextCount = 0;
       if (activeCard) {
-        // ② 拿到卡片上的计数元素
-        const countEl = activeCard.querySelector('.class-sample-count');
-        // ③ 从 data 属性里读取旧值 +1
-        cardCount = parseInt(countEl.getAttribute('data-sample-count') || '0', 10) + 1;
-        // ④ 写回 data 属性 & 文本
-        countEl.setAttribute('data-sample-count', String(cardCount));
-        countEl.textContent = `${cardCount} video samples`;
+        const cntEl = activeCard.querySelector('.class-sample-count');
+        const prev  = parseInt(cntEl.dataset.sampleCount || '0', 10);
+        nextCount   = prev + 1;
+        cntEl.dataset.sampleCount = nextCount;
+        cntEl.textContent = `${nextCount} video samples`;
       }
 
-      // ⑤ 再更新底部的 toolbar 计数为当前类的值
+      // —— 同步底部预览区的计数 —— 
       document.getElementById('sample-counter').textContent =
-            `${cardCount} video sample${cardCount>1?'s':''}`;
+        `${nextCount} video sample${nextCount>1?'s':''}`;
 
 
       /* ② 取本段的“中间一帧”做缩略图 */
@@ -940,33 +942,48 @@ function setActiveClass(cardEl) {
 /* ---- ② 处理 click：Webcam / Upload 按钮 ---- */
 document.querySelector('.classes-panel')
   .addEventListener('click', e => {
-    const camBtn = e.target.closest('.webcam-btn');
-    if (camBtn) {
-      const card = camBtn.closest('.class-card');
+    const card = e.target.closest('.class-card');
+    if (!card) return;
+
+    // —— ① 先读 label 并写入全局 —— 
+    const label = card.querySelector('.label-text').textContent.trim();
+    collectingLabel = label;
+    document.getElementById('class-name').textContent = label;
+
+    // —— Webcam —— 
+    if (e.target.closest('.webcam-btn')) {
       setActiveClass(card);
       startWebcam();
       return;
     }
 
-    const upBtn = e.target.closest('.upload-btn');
-    if (upBtn) {
-      const card = upBtn.closest('.class-card');
-      /* 触发隐藏的 <input type=file> */
-      card.querySelector('input[type=file]').click();
+    // —— Upload —— 
+    if (e.target.closest('.upload-btn')) {
+      setActiveClass(card);
+      const input = card.querySelector('input[type=file]');
+      // 绑定一次性 change
+      input.addEventListener('change', function handler(ev) {
+        const file = ev.target.files[0];
+        if (file) handleFile(file);
+        ev.target.value = '';
+        input.removeEventListener('change', handler);
+      }, { once: true });
+      input.click();
     }
   });
 
-/* ---- ③ 处理 change：真正拿到上传文件 ---- */
-document.querySelector('.classes-panel')
-  .addEventListener('change', e => {
-    if (e.target.type !== 'file') return;      // 不是 file input
-    const file = e.target.files[0];
-    if (!file) return;
 
-    const card = e.target.closest('.class-card');
-    setActiveClass(card);
-    handleFile(file);                          // 原有上传逻辑
-  });
+// /* ---- ③ 处理 change：真正拿到上传文件 ---- */
+// document.querySelector('.classes-panel')
+//   .addEventListener('change', e => {
+//     if (e.target.type !== 'file') return;      // 不是 file input
+//     const file = e.target.files[0];
+//     if (!file) return;
+
+//     const card = e.target.closest('.class-card');
+//     setActiveClass(card);
+//     handleFile(file);                          // 原有上传逻辑
+//   });
 
 
 //训练按钮
