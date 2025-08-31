@@ -91,10 +91,22 @@
       <div class="card">
         <div class="card-header"><span>Training</span></div>
         <div class="card-body">
+          <div class="train-controls" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:6px;">
+              learningRate =
+              <input id="lr-input" type="number" step="0.0001" min="0.000001" max="0.1" value="0.001" style="width:100px;padding:6px 8px;border:1px solid #d1d5db;border-radius:8px;">
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;">
+              epochs =
+              <input id="epochs-input" type="number" min="1" max="200" value="5" style="width:80px;padding:6px 8px;border:1px solid #d1d5db;border-radius:8px;">
+            </label>
+          </div>
+
           <button class="full-btn" id="train-btn">Train Model</button>
         </div>
       </div>
     </section>
+
 
     <!-- RIGHT COLUMN: Preview -->
     <section class="column preview">
@@ -231,15 +243,42 @@
   });
 
   /* ===== 训练按钮 ===== */
-  document.getElementById('train-btn')
-    .addEventListener('click', () => {
-      if (typeof classifier !== 'undefined') {
-        classifier.normalizeData();
-        classifier.train({ epochs: 5 }, finishedTraining);
-      } else {
-        console.warn('classifier 未就绪');
-      }
-    });
+  document.getElementById('train-btn').addEventListener('click', () => {
+    if (typeof classifier === 'undefined') {
+      console.warn('classifier 未就绪');
+      return;
+    }
+
+    // 读取 & 校验
+    const lrInput = document.getElementById('lr-input');
+    const epInput = document.getElementById('epochs-input');
+
+    let lr = parseFloat(lrInput?.value);
+    let epochs = parseInt(epInput?.value, 10);
+
+    // 合理边界与兜底
+    if (!Number.isFinite(lr)) lr = 0.001;
+    lr = Math.min(Math.max(lr, 0.000001), 0.1); // [1e-6, 0.1]
+
+    if (!Number.isFinite(epochs)) epochs = 5;
+    epochs = Math.min(Math.max(epochs, 1), 200); // [1, 200]
+
+    // 若你之前加过 canTrain() 校验，这里继续沿用（可选）
+    if (typeof canTrain === 'function' && !canTrain()) return;
+
+    // 有些 ml5 版本支持在 train 里传 learningRate；为稳妥先尝试动态设置
+    if (typeof classifier.setLearningRate === 'function') {
+      classifier.setLearningRate(lr);
+    } else if (classifier?.config) {
+      // 部分实现把学习率挂在 config 上
+      classifier.config.learningRate = lr;
+    }
+
+    classifier.normalizeData();
+    classifier.train({ epochs, learningRate: lr }, finishedTraining);
+    console.log(`Started training... epochs=${epochs}, learningRate=${lr}`);
+  });
+
 
   /* ===== 导出训练数据按钮 ===== */
   document.getElementById('export-model-btn')
