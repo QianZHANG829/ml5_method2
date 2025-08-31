@@ -280,73 +280,64 @@
   });
 </script>
 
+<script>
+  /* 让现有的 Class 1 卡片的 ⋮ 菜单生效（如果上面已经调用过，可留可去） */
+  bindMenu(document.querySelector('.class-card'));
 
-  <script>
+  /* 计数器：Class 1 已存在，从 2 开始 */
+  let classCount = 1;
 
-    /* ① 对已有的 Class 1 调用一次 */
-    bindMenu(document.querySelector('.class-card'));
+  /* 点击 “Add a class” —— 克隆模板并插入 */
+  document.querySelector('.class-add-btn').addEventListener('click', () => {
+    classCount++;
+    const label  = `Class ${classCount}`;
+    const tpl    = document.getElementById('class-card-template');
+    const cardEl = tpl.content.firstElementChild.cloneNode(true); // 深拷贝
 
-    /* 计数器：Class 1 已经存在，从 2 开始 */
-    let classCount = 1;
-    
-    /* 点击 “Add a class” */
-    document.querySelector('.class-add-btn').addEventListener('click', ()=>{
-    
-      classCount++;
-      const label   = `Class ${classCount}`;
-      const tpl     = document.getElementById('class-card-template');
-      const cardEl  = tpl.content.firstElementChild.cloneNode(true);   // 深拷贝
-    
-      /* 更新标题文字 */
-      cardEl.querySelector('.card-header span').textContent = label;
-    
-      /* 给 upload input / button 配唯一 id */
-      const inputEl  = cardEl.querySelector('input[type=file]');
-      const uploadBt = cardEl.querySelector('.upload-btn');
-    
-      const uid = `video-upload-${classCount}`;
-      inputEl.id = uid;
-      uploadBt.onclick = ()=> document.getElementById(uid).click();
-    
-      /* 绑定文件选择事件 */
-      inputEl.addEventListener('change', e=>{
-        const file = e.target.files[0];
-        if (file) handleFile(file);
-      });
-    
-      /* ✎ 按钮改名（与 Class 1 的逻辑相同） */
-      cardEl.querySelector('.edit-btn').addEventListener('click', function (){
-        const card    = this.closest('.class-card');                 // 当前这张卡片
-        const spanEl  = card.querySelector('.card-header span');     // 标题位置
-        const newName = prompt("Rename this class:", spanEl.textContent);
-        if (newName){
-          spanEl.textContent = newName.trim();
-        }
-      });
+    // 标题
+    cardEl.querySelector('.card-header span').textContent = label;
 
-      /* ……克隆 cardEl 的代码 …… */
-      bindMenu(cardEl);  
-      
-    
-      /* 将新卡片插入 Classes 列（在 “Add a class” 按钮前）*/
-      document.querySelector('.classes-panel')
-              .insertBefore(cardEl, document.querySelector('.class-add-btn'));
+    // 给 upload input / button 配唯一 id（不在这里绑定 change，交给全局委托处理）
+    const inputEl  = cardEl.querySelector('input[type="file"]');
+    const uploadBt = cardEl.querySelector('.upload-btn');
+    const uid = `video-upload-${classCount}`;
+    inputEl.id = uid;
+    uploadBt.onclick = () => document.getElementById(uid).click();
+
+    // ✎ 改名（仅改这张卡片标题；真正采集时的标签在点击 Webcam/Upload 时同步到 window.className）
+    cardEl.querySelector('.edit-btn').addEventListener('click', function (){
+      const spanEl  = this.closest('.class-card').querySelector('.card-header span');
+      const newName = prompt("Rename this class:", spanEl.textContent);
+      if (newName) spanEl.textContent = newName.trim();
     });
 
-    /* 绑定所有 Webcam 按钮 */
-    document.querySelectorAll('.webcam-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        console.log('👆 webcam btn clicked');
-        // 激活当前卡片名称 → 收集时能打正确 label
-        className = btn.closest('.class-card')
-                      .querySelector('.card-header span').textContent;
-        document.getElementById('class-name').textContent = className;
+    // ⋮ 菜单
+    bindMenu(cardEl);
 
-        startWebcam();
-      });
-    });
+    // 插入到 “Add a class” 按钮前
+    document.querySelector('.classes-panel')
+      .insertBefore(cardEl, document.querySelector('.class-add-btn'));
+  });
 
-  </script>
+  /* Webcam —— 用事件委托适配后续新增的卡片 */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.webcam-btn');
+    if (!btn) return;
+
+    const card = btn.closest('.class-card');
+    const name = card.querySelector('.card-header span').textContent.trim();
+
+    // ✅ 同步全局与 UI（Start to collect 会读取 window.className）
+    window.className = name;
+    if (typeof className !== 'undefined') className = name; // 若你上面保留了局部变量
+    const el = document.getElementById('class-name');
+    if (el) el.textContent = name;
+
+    // 开启摄像头
+    startWebcam();
+  });
+</script>
+
     
 </body>
 </html>
