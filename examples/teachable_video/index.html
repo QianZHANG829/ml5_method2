@@ -203,72 +203,83 @@
   </script>
     
 
-  <!-- 新增绑定逻辑：上传视频并展示 -->
-  <script>
-    // 上传视频 → 调用 sketch.js 中的 handleFile(file)
-    document.getElementById('video-upload-1')
-      .addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (file) {
-          handleFile(file);
-        }
-      });
+<script>
+  /* —— 全局当前类名（初始化为 Class 1） —— */
+  let className = "Class 1";
+  window.className = className; // 暴露到全局，collect.js 可读
+  const classNameEl = document.getElementById('class-name');
+  if (classNameEl) classNameEl.textContent = className;
 
-    // 训练按钮
-    document.getElementById('train-btn')
-      .addEventListener('click', () => {
-        if (typeof classifier !== 'undefined') {
-          classifier.normalizeData();
-          classifier.train({ epochs: 5 }, finishedTraining);
-        }
-      });
+  /* ===== 上传：事件委托，统一处理所有 class 卡片里的 <input type="file"> ===== */
+  document.addEventListener('change', (e) => {
+    const input = e.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    if (!input.matches('.class-card input[type="file"]')) return;
 
-    // 导出数据
-    document.getElementById('export-model-btn')
-      .addEventListener('click', () => {
-        if (typeof classifier !== 'undefined') {
-          classifier.saveData();
-        }
-      });
+    const file = input.files && input.files[0];
+    if (!file) return;
 
-  /* —— 全局保存当前类名 —— */
- 
-    /* ───────────────
-       1️⃣ 当前激活的类名
-    ──────────────── */
-    let className = "Class 1";          // 页面初始值
-    document.getElementById('class-name').textContent = className;
-    
-    /* ───────────────
-       2️⃣ ✎ 按钮改名
-    ──────────────── */
-    document.getElementById('edit-class-btn').addEventListener('click', ()=>{
-      const newName = prompt("Rename this class:", className);
-      if(!newName) return;
-      className = newName.trim();                       // ← ❶ 关键：覆盖全局
-      if(!className) return;
-    
-      // 更新显示
-      document.querySelector('.class-card .card-header span').textContent = className;
-      document.getElementById('class-name').textContent       = className;
-    });
-    
-    /* ───────────────
-       3️⃣ Start to collect
-    ──────────────── */
-    document.getElementById('collect-btn').addEventListener('click', ()=>{
-      const fps = +document.getElementById('fps-input').value || 30;
-      const dur = +document.getElementById('dur-input').value || 15;
+    // 同步当前卡片名到全局
+    const card = input.closest('.class-card');
+    const name = card.querySelector('.card-header span').textContent.trim();
+    window.className = name;
+    className = name;
+    if (classNameEl) classNameEl.textContent = name;
 
-    
-      
-      /* 关键：通过 window 访问 collect.js 暴露的函数 */
-      window.setFpsAndDuration(fps, dur);         // 修改 FPS & CAPTURE_FRAMES
-      startCollection(className);       // <-- 把当前 className 传进去
+    // 交给 p5/collect.js 处理视频
+    handleFile(file);
+  });
+
+  /* ===== 训练按钮 ===== */
+  document.getElementById('train-btn')
+    .addEventListener('click', () => {
+      if (typeof classifier !== 'undefined') {
+        classifier.normalizeData();
+        classifier.train({ epochs: 5 }, finishedTraining);
+      } else {
+        console.warn('classifier 未就绪');
+      }
     });
 
+  /* ===== 导出训练数据按钮 ===== */
+  document.getElementById('export-model-btn')
+    .addEventListener('click', () => {
+      if (typeof classifier !== 'undefined') {
+        classifier.saveData();
+      } else {
+        console.warn('classifier 未就绪');
+      }
+    });
 
-  </script>
+  /* ===== ✎ 重命名【Class 1】卡片（仅改这张卡；新增卡片的 ✎ 在克隆逻辑里已处理） ===== */
+  document.getElementById('edit-class-btn').addEventListener('click', () => {
+    const newName = prompt("Rename this class:", className);
+    if (!newName) return;
+    const name = newName.trim();
+    if (!name) return;
+
+    // 更新页面与全局
+    document.querySelector('.class-card .card-header span').textContent = name;
+    if (classNameEl) classNameEl.textContent = name;
+    className = name;
+    window.className = name;
+  });
+
+  /* ===== Start to collect（始终以全局 window.className 为准，避免串标） ===== */
+  document.getElementById('collect-btn').addEventListener('click', () => {
+    const fps = +document.getElementById('fps-input').value || 30;
+    const dur = +document.getElementById('dur-input').value || 15;
+
+    // 修改 FPS & CAPTURE_FRAMES（collect.js 暴露）
+    if (typeof window.setFpsAndDuration === 'function') {
+      window.setFpsAndDuration(fps, dur);
+    }
+
+    // 用全局当前类名开始采集
+    startCollection(window.className);
+  });
+</script>
+
 
   <script>
 

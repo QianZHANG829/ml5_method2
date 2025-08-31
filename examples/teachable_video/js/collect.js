@@ -481,6 +481,8 @@ function gotPoses(results) {
 
 
       classifier.addData(sequence, { label: collectingLabel });
+          console.log(`✅ 已成功写入 ${sequence.length} 帧到模型，标签为：${collectingLabel}`);
+
       sequence = [];
       frameCount = 0;
 
@@ -503,16 +505,34 @@ function gotPoses(results) {
           0,0,webcamCapture.width,webcamCapture.height
         );
       } else if(video){
-        /* seek 到本段中点 → onseeked → drawImage */
+        // —— 文件视频模式：seek 到本段中点，抓一帧做缩略图，然后回到原来的时间并继续播放 ——
+        const wasPlaying = !video.elt.paused;          // 记录之前是否在播放
         const oldT = video.time();
         const midT = (collectStartTime + endTime) / 2;
-        video.time(midT);
-        video.elt.onseeked = () =>{
-          thumbCanvas.image(video,0,0,thumbW,thumbH,0,0,
-                            video.width,video.height);
+
+        const handleSeeked = () => {
+          // 用真实视频尺寸绘制，避免 0 宽高
+          const vw = video.elt.videoWidth  || video.width  || CANVAS_W;
+          const vh = video.elt.videoHeight || video.height || CANVAS_H;
+          thumbCanvas.image(video, 0, 0, thumbW, thumbH, 0, 0, vw, vh);
+
+          // 1) 移除监听（once:true 也会自动移除；这里是双保险）
+          video.elt.removeEventListener('seeked', handleSeeked);
+
+          // 2) 回到采集前的时间点
           video.time(oldT);
+
+          // 3) 恢复播放状态
+          if (wasPlaying) video.play();
         };
+        // 只监听一次 seeked，避免回调反复触发
+        video.elt.addEventListener('seeked', handleSeeked, { once: true });
+
+        // 为了干净抓帧，先暂停，seek 到中点
+        if (wasPlaying) video.pause();
+        video.time(midT);
       }
+
 
       /* ③ 转成 <img> */
       /* ③ 创建 <img> 缩略图 */
@@ -586,6 +606,7 @@ function keyPressed() {
 // 开始录制数据，延时1秒后开始录制
 function startCollection(label) {
   console.log(`Will start collecting label=${label} in 1s...`);
+  collectingLabel = label;   // ✅ 立刻更新！防止变量错乱
   setTimeout(() => {
     collecting = true;
     collectingLabel = label;
