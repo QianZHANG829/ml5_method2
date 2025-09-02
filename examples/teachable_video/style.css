@@ -225,3 +225,23 @@ body{ overflow-x:auto; }  /* 允许页面横向滚动 */
   margin-right: 0;
   text-align: left;
 }
+
+/* ===== Preview 基础样式 ===== */
+.pv-wrap { max-width: 420px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 14px; background:#fff; }
+.pv-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.pv-head h3 { margin:0; font-size:16px; font-weight:600; }
+.pv-badge { font-size:12px; padding:2px 8px; border-radius:999px; background:#f3f4f6; color:#6b7280; }
+
+.pv-video-wrap { position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:12px; background:#000; }
+#pv-video { width:100%; height:100%; object-fit:cover; display:block; }
+.pv-overlay { position:absolute; inset:0; display:grid; place-items:center; color:#fff; background:rgba(0,0,0,.35); font-size:14px; }
+.pv-overlay.hidden { display:none; }
+
+.pv-output { margin-top:10px; }
+.pv-row { margin:8px 0; }
+.pv-row .pv-top { display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:6px; }
+.pv-bar { height:8px; width:100%; background:#e5e7eb; border-radius:999px; overflow:hidden; }
+.pv-bar .fill { height:100%; width:0%; background:#f97316; transition:width .15s linear; }
+.pv-err { margin-top:8px; color:#b91c1c; background:#fee2e2; border:1px solid #fecaca; border-radius:8px; padding:6px 8px; font-size:12px; }
+
+.pv-canvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }

@@ -25,7 +25,20 @@ let vidWidth = 1920;
 let vidHeight = 1080;
 
 let FPS = 30;
-let CAPTURE_FRAMES = 15 * FPS; 
+let DURATION_SEC = 15;                 // ← 新增：可随时改秒数
+let CAPTURE_FRAMES = DURATION_SEC * FPS; 
+
+// —— 把配置暴露给 preview.js ——
+// 初始值（保证 preview.js 能读到）
+window.__tvConfig = { fps: FPS, durationSec: DURATION_SEC };
+// 当你在运行时修改 fps 或 duration 时，调用它来同步 preview
+function syncPreviewConfig() {
+  window.__tvConfig = { fps: FPS, durationSec: DURATION_SEC };
+  // 通知 preview.js 立即重算帧数和节流间隔
+  window.dispatchEvent(new CustomEvent("tv-config-changed", {
+    detail: window.__tvConfig
+  }));
+}
 
 // 全局输入名称数组（33 个关键点，每个有 x 和 y，共66个输入）
 let inputNames = [];
@@ -598,7 +611,7 @@ function keyPressed() {
   else if (key === 't' || key === 'T') {
     classifier.saveData();
     classifier.normalizeData();
-    classifier.train({ epochs: 5 }, finishedTraining);
+    classifier.train({ epochs: 50 }, finishedTraining);
     console.log("Started training...");
   }
 }
@@ -625,6 +638,13 @@ function startCollection(label) {
 function finishedTraining() {
   console.log("模型训练完成！");
   classifier.save();
+  
+  window.__tvModelInstance   = classifier;        // 直接给预览用
+  window.__tvFeatureExtractor = (seq) => seq; // 训练时若用原始x/y
+  window.__tvModelName = "In-memory (" + new Date().toLocaleTimeString() + ")";
+
+
+  console.log("已暴露内存模型：window.__tvModelInstance & __tvFeatureExtractor");
 }
 
 // 播放/暂停控制
@@ -852,14 +872,17 @@ window.exportData = () => {
 /* ============================================================
    可在运行期改写 FPS / CAPTURE_FRAMES   —— 直接贴到文件末尾
    ============================================================ */
-   function setFpsAndDuration(newFps, newDuration){
-    FPS            = newFps;
-    CAPTURE_FRAMES = newFps * newDuration;
-    console.log(`⚙️ FPS=${FPS}, CAPTURE_FRAMES=${CAPTURE_FRAMES}`);
+  function setFpsAndDuration(newFps, newDuration){
+    FPS          = Number(newFps);
+    DURATION_SEC = Number(newDuration);
+    CAPTURE_FRAMES = FPS * DURATION_SEC;
+    console.log(`⚙️ FPS=${FPS}, DURATION=${DURATION_SEC}s, CAPTURE_FRAMES=${CAPTURE_FRAMES}`);
+
+    // 同步给预览（让 preview.js 立刻用新节奏推理）
+    if (typeof syncPreviewConfig === 'function') syncPreviewConfig();
   }
-  window.setFpsAndDuration = setFpsAndDuration;   // ← 一定放到全局
-  /* ====== 4. 暴露到全局，给 HTML 调用 ====== */
-window.startWebcam = startWebcam;
-  
+  window.setFpsAndDuration = setFpsAndDuration;
+
+    
 
  
