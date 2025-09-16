@@ -233,29 +233,32 @@
     }
 
     async function ensureClassifierLoaded(){
-      // 优先用内存实例
-      if (window.__tvModelInstance && typeof window.__tvModelInstance.classify === "function"){
+    // ✅ 优先使用内存实例
+    if (window.__tvModelInstance && typeof window.__tvModelInstance.classify === "function") {
         classifierEmotion = window.__tvModelInstance;
         modelNameEl && (modelNameEl.textContent = window.__tvModelName || "In-memory model");
         return;
-      }
-      // 其次：内存对象
-      if (window.__tvModel){
+    }
+
+    // ✅ 其次，使用内存对象（需要你从 collect 页暴露 window.__tvModel）
+    if (window.__tvModel) {
         classifierEmotion = ml5.timeSeries({ task:"classification", dataMode:"spatial", debug:false });
-        await new Promise((res,rej)=> classifierEmotion.load(window.__tvModel, res, rej));
+        await new Promise((res, rej) => classifierEmotion.load(window.__tvModel, res, rej));
         modelNameEl && (modelNameEl.textContent = "In-memory object");
         return;
-      }
-      // 最后：文件
-      classifierEmotion = ml5.timeSeries({ task:"classification", dataMode:"spatial", debug:false });
-      const src = MODEL_URL || {
+    }
+
+    // 最后 fallback 到硬编码的模型文件（不推荐）
+    classifierEmotion = ml5.timeSeries({ task:"classification", dataMode:"spatial", debug:false });
+    const src = MODEL_URL || {
         model: "model/Model_Emotion_test10.1/model.json",
         metadata: "model/Model_Emotion_test10.1/model_meta.json",
-        weights: "model/Model_Emotion_test10.1/model.weights.bin",
-      };
-      await new Promise((res,rej)=> classifierEmotion.load(src, res, rej));
-      modelNameEl && (modelNameEl.textContent = typeof src === "string" ? src : src.model);
+        weights: "model/Model_Emotion_test10.1/model.weights.bin"
+    };
+    await new Promise((res, rej) => classifierEmotion.load(src, res, rej));
+    modelNameEl && (modelNameEl.textContent = typeof src === "string" ? src : src.model);
     }
+
   };
 
   // 创建 p5 实例，挂在预览卡片

@@ -245,3 +245,15 @@ body{ overflow-x:auto; }  /* 允许页面横向滚动 */
 .pv-err { margin-top:8px; color:#b91c1c; background:#fee2e2; border:1px solid #fecaca; border-radius:8px; padding:6px 8px; font-size:12px; }
 
 .pv-canvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+
+/* 预览运行时，隐藏 collect 区域 */
+.hidden-by-preview { display: none !important; }
+
+/* 放大右侧 Preview 卡片（默认 pv-wrap 有 max-width: 420px）*/
+.pv-wrap.is-wide {
+  max-width: 960px;     /* 需要更大就调这个值，例如 1100px */
+  width: 100%;
+}
+
+/* 让视频区域跟随变宽 */
+.pv-video-wrap { width: 100%; }

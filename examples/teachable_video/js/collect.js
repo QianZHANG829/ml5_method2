@@ -642,6 +642,8 @@ function finishedTraining() {
   window.__tvModelInstance   = classifier;        // 直接给预览用
   window.__tvFeatureExtractor = (seq) => seq; // 训练时若用原始x/y
   window.__tvModelName = "In-memory (" + new Date().toLocaleTimeString() + ")";
+  window.dispatchEvent(new CustomEvent("tv-config-changed")); // 👈 让 preview 重置
+
 
 
   console.log("已暴露内存模型：window.__tvModelInstance & __tvFeatureExtractor");
@@ -862,7 +864,7 @@ window.handleFile = handleFile;
 window.startCollection = startCollection;
 window.trainModel = () => {
   classifier.normalizeData();
-  classifier.train({ epochs: 5 }, finishedTraining);
+  classifier.train({ epochs: 100 }, finishedTraining);
 };
 window.exportData = () => {
   classifier.saveData();
@@ -884,5 +886,23 @@ window.exportData = () => {
   window.setFpsAndDuration = setFpsAndDuration;
 
     
+
+window.trainModel = () => {
+  // 获取 UI 中输入的参数
+  const lrInput = document.getElementById('lr-input');
+  const epochInput = document.getElementById('epochs-input');
+  const learningRate = lrInput ? parseFloat(lrInput.value || "0.001") : 0.001;
+  const epochs = epochInput ? parseInt(epochInput.value || "30") : 30;
+
+  if (typeof classifier.setLearningRate === 'function') {
+    classifier.setLearningRate(learningRate);
+  } else if (classifier.config) {
+    classifier.config.learningRate = learningRate;
+  }
+
+  classifier.normalizeData();
+  classifier.train({ epochs }, finishedTraining);  // ✅ 使用读取到的 epochs
+  console.log(`Started training... epochs=${epochs}, learningRate=${learningRate}`);
+};
 
  
